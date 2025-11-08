@@ -1,43 +1,83 @@
-# Dependencies
-node_modules
-/.pnp
+# Dependencies# Dependencies
+
+node_modules/node_modules
+
+frontend/node_modules//.pnp
+
 .pnp.js
 
-# Testing
-/coverage
-
 # Next.js
-/.next/
-/out/
 
-# Production
-/build
-dist
+frontend/.next/# Testing
+
+frontend/out//coverage
+
+
+
+# Environment variables# Next.js
+
+.env*.local/.next/
+
+frontend/.env*.local/out/
+
+
+
+# Build files# Production
+
+frontend/build//build
+
+frontend/dist/dist
+
 dist-ssr
 
-# Misc
-.DS_Store
-*.pem
+# IDE
+
+.vscode/# Misc
+
+.idea/.DS_Store
+
+*.swp*.pem
+
+*.swo
 
 # Debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+
+# OSnpm-debug.log*
+
+.DS_Storeyarn-debug.log*
+
+Thumbs.dbyarn-error.log*
+
 pnpm-debug.log*
-lerna-debug.log*
 
-# Local env files
-.env*.local
-.env.local
+# Logslerna-debug.log*
+
+*.log
+
+npm-debug.log*# Local env files
+
+yarn-debug.log*.env*.local
+
+yarn-error.log*.env.local
+
 .env.development.local
-.env.test.local
-.env.production.local
 
-# Vercel
-.vercel
+# Testing.env.test.local
 
-# TypeScript
-*.tsbuildinfo
+coverage/.env.production.local
+
+
+
+# Database# Vercel
+
+*.db.vercel
+
+*.db-journal
+
+frontend/*.db# TypeScript
+
+frontend/*.db-journal*.tsbuildinfo
+
 next-env.d.ts
 
 # Editor directories and files
