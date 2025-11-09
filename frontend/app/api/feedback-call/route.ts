@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const FASTAPI_BACKEND = process.env.FASTAPI_BACKEND_URL || 'http://localhost:8000';
 
 export async function POST(request: NextRequest) {
   try {
-    const { id, transcript, phone } = await request.json();
+    const { id, transcript, phone, customerName } = await request.json();
 
     if (!transcript || !phone) {
       return NextResponse.json(
@@ -14,46 +15,60 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`📞 Simulating ElevenLabs call to ${phone}...`);
+    console.log(`📞 Initiating ElevenLabs call to ${customerName || 'customer'} at ${phone}...`);
     
-    // STEP 1: Simulate ElevenLabs AI phone call
-    // In production, this would call ElevenLabs API to make a real phone call
-    // For demo purposes, we'll simulate the customer's detailed response
-    
-    const simulatedResponses: { [key: string]: string } = {
-      'setup instructions': 'Yeah, I was on the main page and couldn\'t find the "Pay Bill" button at all. I had to dig through three menus just to pay my bill. Super frustrating!',
-      'bill': 'I got charged $20 extra this month with no warning. When I called support, they said it was a "rate adjustment" but I was never notified via email or text.',
-      'customer service': 'I was on hold for 45 minutes and when someone finally picked up, they transferred me to another department where I waited another 30 minutes.',
-      'default': 'The app experience was really confusing. I spent 20 minutes trying to find basic features that should be obvious.'
-    };
+    // STEP 1: Call FastAPI backend to initiate ElevenLabs agent conversation
+    const backendResponse = await fetch(`${FASTAPI_BACKEND}/api/call`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        customer_name: customerName || 'Customer',
+        customer_phone: phone,
+        transcript: transcript,
+      }),
+    });
 
-    // Determine which simulated response to use based on transcript content
-    let customerDetailedResponse = simulatedResponses.default;
-    for (const [key, response] of Object.entries(simulatedResponses)) {
-      if (transcript.toLowerCase().includes(key)) {
-        customerDetailedResponse = response;
-        break;
-      }
+    if (!backendResponse.ok) {
+      const error = await backendResponse.json();
+      throw new Error(`Backend error: ${error.detail || 'Unknown error'}`);
     }
 
-    console.log(`🎤 Simulated customer response received`);
+    const callData = await backendResponse.json();
+    console.log(`✅ Call completed - ${callData.conversation.length} conversation turns`);
+    
+    // Extract the full conversation transcript
+    const conversationTranscript = callData.conversation
+      .map((turn: any) => `${turn.role.toUpperCase()}: ${turn.message}`)
+      .join('\n\n');
+    
+    const customerDetailedResponse = callData.conversation
+      .filter((turn: any) => turn.role === 'user')
+      .map((turn: any) => turn.message)
+      .join(' ');
 
-    // STEP 2: Send the NEW detailed feedback to Gemini for strategy memo
+    console.log(`🎤 Customer detailed feedback received from ElevenLabs agent`);
+
+    // STEP 2: Send the conversation to Gemini for strategy memo
     const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
 
     const strategyPrompt = `You are a Director of Product Strategy at T-Mobile.
 
-A customer was contacted for follow-up feedback. Here is their detailed response:
+An AI agent just completed a follow-up call with a customer. Here is the full conversation:
 
-"${customerDetailedResponse}"
+${conversationTranscript}
 
 Original complaint context: "${transcript}"
 
+Customer's detailed response during the call:
+"${customerDetailedResponse}"
+
 Generate a comprehensive **Product Strategy Memo** with:
 
-1. **Root Cause Problem**: Identify the core UX/product issue
+1. **Root Cause Problem**: Identify the core UX/product issue from the conversation
 2. **Business Impact**: Explain why this matters (customer retention, support costs, etc.)
-3. **Recommendations**: Provide 2-3 specific, actionable fixes
+3. **Recommendations**: Provide 2-3 specific, actionable fixes based on the conversation
 4. **User Story**: Write one draft user story for the development team
 
 Format professionally as an internal strategy document.`;
@@ -69,6 +84,8 @@ Format professionally as an internal strategy document.`;
     return NextResponse.json({
       memo,
       customerResponse: customerDetailedResponse,
+      conversationTranscript,
+      callSuccessful: callData.call_successful,
       callCompleted: true,
       id
     });
