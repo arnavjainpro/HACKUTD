@@ -1,0 +1,211 @@
+{
+  "simulated_conversation": [
+    {
+      "role": "agent",
+      "agent_metadata": {
+        "agent_id": "agent_0801k9jzy5jwfy08aksezh9dv4tj",
+        "branch_id": null,
+        "workflow_node_id": null
+      },
+      "message": "Hi there! Thanks for contacting T-Mobile customer support, how can I help you today?",
+      "multivoice_message": null,
+      "tool_calls": [],
+      "tool_results": [],
+      "feedback": null,
+      "llm_override": null,
+      "time_in_call_secs": 0,
+      "conversation_turn_metrics": null,
+      "rag_retrieval_info": null,
+      "llm_usage": null,
+      "interrupted": false,
+      "original_message": null,
+      "source_medium": null
+    },
+    {
+      "role": "user",
+      "agent_metadata": null,
+      "message": "Hello! Thank you for taking my call. I'm interested in learning more about the services T-Mobile offers.  I'm currently looking for a new mobile plan and wanted to see what options might be available.",
+      "multivoice_message": null,
+      "tool_calls": [],
+      "tool_results": [],
+      "feedback": null,
+      "llm_override": null,
+      "time_in_call_secs": 0,
+      "conversation_turn_metrics": null,
+      "rag_retrieval_info": null,
+      "llm_usage": null,
+      "interrupted": false,
+      "original_message": null,
+      "source_medium": null
+    },
+    {
+      "role": "agent",
+      "agent_metadata": {
+        "agent_id": "agent_0801k9jzy5jwfy08aksezh9dv4tj",
+        "branch_id": null,
+        "workflow_node_id": null
+      },
+      "message": "Of course, I can definitely help you with that!  To give you the best recommendations, could you tell me a little more about what you're looking for in a mobile plan? For example, how much data do you typically use, and are you interested in any specific features?",
+      "multivoice_message": null,
+      "tool_calls": [],
+      "tool_results": [],
+      "feedback": null,
+      "llm_override": null,
+      "time_in_call_secs": 0,
+      "conversation_turn_metrics": null,
+      "rag_retrieval_info": null,
+      "llm_usage": null,
+      "interrupted": false,
+      "original_message": null,
+      "source_medium": null
+    },
+    {
+      "role": "user",
+      "agent_metadata": null,
+      "message": "That's a great question. I'd say my data usage is pretty moderate. I stream a bit of music and video, browse social media, and use maps, but I'm not constantly on my phone.  Maybe around 15-20 GB a month, but I'm flexible.\n\nI'm definitely looking for good coverage, especially since I travel a bit within the country.  Also, I'm curious if you have any good options for family plans, as my partner might be interested in switching too. Are there any plans that offer international roaming or calling benefits?  That would be a nice bonus.",
+      "multivoice_message": null,
+      "tool_calls": [],
+      "tool_results": [],
+      "feedback": null,
+      "llm_override": null,
+      "time_in_call_secs": 0,
+      "conversation_turn_metrics": null,
+      "rag_retrieval_info": null,
+      "llm_usage": null,
+      "interrupted": false,
+      "original_message": null,
+      "source_medium": null
+    },
+    {
+      "role": "agent",
+      "agent_metadata": {
+        "agent_id": "agent_0801k9jzy5jwfy08aksezh9dv4tj",
+        "branch_id": null,
+        "workflow_node_id": null
+      },
+      "message": "Thanks for sharing those details! It sounds like you're looking for a plan with moderate data, excellent national coverage for your travels, and potentially a family plan option, with international features as a bonus. I understand how important it is to find the right fit.\n \nWhile I can't pull up specific plan details or pricing for you right now, I can certainly connect you with a specialist who can walk you through all our current mobile plan options, including family plans and international roaming benefits, to find the perfect one for your needs. Would you like me to do that for you?",
+      "multivoice_message": null,
+      "tool_calls": [],
+      "tool_results": [],
+      "feedback": null,
+      "llm_override": null,
+      "time_in_call_secs": 0,
+      "conversation_turn_metrics": null,
+      "rag_retrieval_info": null,
+      "llm_usage": null,
+      "interrupted": false,
+      "original_message": null,
+      "source_medium": null
+    },
+    {
+      "role": "user",
+      "agent_metadata": null,
+      "message": "Yes, that would be very helpful, thank you!  I'd appreciate being connected to someone who can go over the plan details and pricing with me.",
+      "multivoice_message": null,
+      "tool_calls": [],
+      "tool_results": [],
+      "feedback": null,
+      "llm_override": null,
+      "time_in_call_secs": 0,
+      "conversation_turn_metrics": null,
+      "rag_retrieval_info": null,
+      "llm_usage": null,
+      "interrupted": false,
+      "original_message": null,
+      "source_medium": null
+    },
+    {
+      "role": "agent",
+      "agent_metadata": {
+        "agent_id": "agent_0801k9jzy5jwfy08aksezh9dv4tj",
+        "branch_id": null,
+        "workflow_node_id": null
+      },
+      "message": null,
+      "multivoice_message": null,
+      "tool_calls": [
+        {
+          "type": "system",
+          "request_id": "end_call_487da9c4615a4250af36aa860ce96e46",
+          "tool_name": "end_call",
+          "params_as_json": "{\"reason\": \"User needs to be connected to a specialist for plan details and pricing.\", \"system__message_to_speak\": \"Wonderful! I'll go ahead and connect you with one of our mobile plan specialists who can provide all the details and pricing information you need. Thank you for choosing T-Mobile \\u2014 we appreciate you, and we'll make sure your concern gets handled.\"}",
+          "tool_has_been_called": false,
+          "tool_details": null
+        }
+      ],
+      "tool_results": [],
+      "feedback": null,
+      "llm_override": null,
+      "time_in_call_secs": 0,
+      "conversation_turn_metrics": null,
+      "rag_retrieval_info": null,
+      "llm_usage": null,
+      "interrupted": false,
+      "original_message": null,
+      "source_medium": null
+    },
+    {
+      "role": "agent",
+      "agent_metadata": {
+        "agent_id": "agent_0801k9jzy5jwfy08aksezh9dv4tj",
+        "branch_id": null,
+        "workflow_node_id": null
+      },
+      "message": null,
+      "multivoice_message": null,
+      "tool_calls": [],
+      "tool_results": [
+        {
+          "request_id": "end_call_487da9c4615a4250af36aa860ce96e46",
+          "tool_name": "end_call",
+          "result_value": "{\"result_type\":\"end_call_success\",\"status\":\"success\",\"reason\":\"User needs to be connected to a specialist for plan details and pricing.\",\"message\":null}",
+          "is_error": false,
+          "tool_has_been_called": true,
+          "tool_latency_secs": 0.5026233620010316,
+          "dynamic_variable_updates": [],
+          "type": "system",
+          "result": {
+            "result_type": "end_call_success",
+            "status": "success",
+            "reason": "User needs to be connected to a specialist for plan details and pricing.",
+            "message": null
+          }
+        }
+      ],
+      "feedback": null,
+      "llm_override": null,
+      "time_in_call_secs": 0,
+      "conversation_turn_metrics": null,
+      "rag_retrieval_info": null,
+      "llm_usage": null,
+      "interrupted": false,
+      "original_message": null,
+      "source_medium": null
+    },
+    {
+      "role": "user",
+      "agent_metadata": null,
+      "message": "Wonderful!  I'll go ahead and connect you with one of our mobile plan specialists who can provide all the details and pricing information you need.  Thank you for choosing T-Mobile \u2014 we appreciate you,  and we'll make sure your concern gets handled.",
+      "multivoice_message": null,
+      "tool_calls": [],
+      "tool_results": [],
+      "feedback": null,
+      "llm_override": null,
+      "time_in_call_secs": 0,
+      "conversation_turn_metrics": null,
+      "rag_retrieval_info": null,
+      "llm_usage": null,
+      "interrupted": false,
+      "original_message": null,
+      "source_medium": null
+    }
+  ],
+  "analysis": {
+    "evaluation_criteria_results": {},
+    "data_collection_results": {},
+    "call_successful": "success",
+    "transcript_summary": "The user contacted T-Mobile to inquire about mobile plan options, specifying moderate data usage (15-20GB), good national coverage, potential family plan interest, and international roaming/calling as a bonus. The agent, unable to provide specific plan details, offered to connect the user with a specialist. The user accepted, and the call was transferred.\n",
+    "call_summary_title": "T-Mobile plan inquiry"
+  },
+  "guardrails_result": null
+}

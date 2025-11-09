@@ -1,0 +1,8 @@
+# ElevenLabs Conversational AI Dependencies
+elevenlabs>=1.0.0
+python-dotenv>=1.0.0
+asyncio>=3.4.3
+
+# Optional: Audio processing
+# pyaudio>=0.2.13
+# sounddevice>=0.4.6
