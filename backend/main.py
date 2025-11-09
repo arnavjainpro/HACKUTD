@@ -60,7 +60,15 @@ app = FastAPI(
 # CORS middleware to allow frontend requests
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000", "http://localhost:3001", "http://127.0.0.1:3001"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "https://www.aurahack.us",
+        "https://aurahack.us",
+        "https://hackutd-frontend.vercel.app"  # Add your Vercel domain if different
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
