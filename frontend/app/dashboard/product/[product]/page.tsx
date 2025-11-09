@@ -153,7 +153,8 @@ export default function ProductDetailPage({
       setCallResult("Error: Failed to complete calls");
     } finally {
       setIsCalling(false);
-      setIsCallModalOpen(false); // Close modal after call completes
+      // Don't close modal here - let the CallModal component handle it
+      // User needs to manually end the call via the End Call button
     }
   };
 
@@ -488,6 +489,12 @@ export default function ProductDetailPage({
           allFeedback.filter((f) => f.type === "Feedback" && f.phone)[0]
             ?.phone || "+1 (555) 123-4567"
         }
+        customerId={
+          allFeedback
+            .filter((f) => f.type === "Feedback" && f.phone)[0]
+            ?.id.toString() || "unknown"
+        }
+        product={productName}
       />
     </div>
   );

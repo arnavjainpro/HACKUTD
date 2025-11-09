@@ -9,6 +9,8 @@ interface CallModalProps {
   onClose: () => void;
   customerName?: string;
   customerPhone?: string;
+  customerId?: string;
+  product?: string;
   onAccept: () => void;
   onDecline: () => void;
 }
@@ -20,6 +22,8 @@ export default function CallModal({
   onClose,
   customerName = "Customer",
   customerPhone = "+1 (555) 123-4567",
+  customerId = "unknown",
+  product = "unknown",
   onAccept,
   onDecline,
 }: CallModalProps) {
@@ -61,10 +65,31 @@ export default function CallModal({
   };
 
   const startElevenLabsCall = async () => {
+    let knowledgeInjected = false;
+
     try {
       setCallState("connecting");
 
-      // Get signed URL from our API
+      console.log("📚 Injecting customer knowledge into agent...");
+
+      // STEP 1: Update agent prompt with customer knowledge
+      const kbResponse = await fetch("/api/elevenlabs-knowledge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customerId, product }),
+      });
+
+      if (kbResponse.ok) {
+        const kbData = await kbResponse.json();
+        knowledgeInjected = true;
+        console.log("✅ Agent prompt updated with customer knowledge");
+      } else {
+        console.warn(
+          "⚠️ Failed to inject knowledge, proceeding with default agent"
+        );
+      }
+
+      // STEP 2: Get signed URL from our API
       const initResponse = await fetch("/api/elevenlabs-init", {
         method: "POST",
       });
@@ -75,21 +100,23 @@ export default function CallModal({
 
       const { signedUrl } = await initResponse.json();
 
-      // Initialize ElevenLabs Conversation with signed URL
+      // STEP 3: Initialize ElevenLabs Conversation (agent has updated prompt)
       const conversation = await Conversation.startSession({
         signedUrl,
         onConnect: () => {
           console.log("🎙️ Connected to ElevenLabs agent");
           setCallState("active");
           setIsElevenLabsReady(true);
+          if (knowledgeInjected) {
+            console.log("✅ Agent has customer knowledge in prompt");
+          }
         },
         onDisconnect: () => {
           console.log("📞 Disconnected from agent");
-          setCallState("ended");
+          // Don't auto-end - let user control when to close
         },
         onError: (error) => {
           console.error("❌ ElevenLabs error:", error);
-          setCallState("ended");
         },
         onMessage: (message) => {
           console.log("💬 Agent said:", message);
@@ -97,6 +124,11 @@ export default function CallModal({
       });
 
       conversationRef.current = conversation;
+
+      // Mark that knowledge was injected for cleanup
+      if (knowledgeInjected) {
+        (conversation as any)._knowledgeInjected = true;
+      }
     } catch (error) {
       console.error("Failed to start ElevenLabs call:", error);
       setCallState("ended");
@@ -118,6 +150,16 @@ export default function CallModal({
 
   const handleEndCall = async () => {
     if (conversationRef.current) {
+      // Reset agent prompt if knowledge was injected
+      const knowledgeInjected = (conversationRef.current as any)
+        ._knowledgeInjected;
+      if (knowledgeInjected) {
+        console.log("� Resetting agent prompt...");
+        fetch("/api/elevenlabs-knowledge", {
+          method: "DELETE",
+        }).catch((err) => console.error("Failed to reset agent:", err));
+      }
+
       await conversationRef.current.endSession();
       conversationRef.current = null;
     }
