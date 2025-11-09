@@ -33,8 +33,9 @@ except ImportError as e:
 env_path = Path(__file__).parent / "ElevenLabs" / ".env"
 load_dotenv(dotenv_path=env_path)
 
-# Also load from backend .env for Supabase credentials
+# Also load from backend .env for Supabase credentials and Weather API
 backend_env_path = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=backend_env_path)
 load_dotenv(dotenv_path=backend_env_path)
 
 # Initialize Supabase client

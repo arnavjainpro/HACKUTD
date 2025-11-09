@@ -7,6 +7,12 @@ import os
 import time
 import json # We need this to parse the batch response
 from supabase import create_client, Client
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from backend .env
+backend_env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(dotenv_path=backend_env_path)
 
 # --- NEW: Supabase Data Loading Function ---
 
@@ -111,7 +117,7 @@ def _get_weather_disaster_status(row, cache):
     api_key = os.environ.get("WEATHER_API_KEY")
 
     print(f"Cache miss. Calling Weather API for: {location} on {date_str}")
-    BASE_URL = "[https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/](https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/)"
+    BASE_URL = "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/"
     query_url = (
         f"{BASE_URL}{location}/{date_str}/{date_str}"
         f"?key={api_key}&unitGroup=us&include=days&elements=windspeedmax,precip,snow"
@@ -145,17 +151,13 @@ def enhance_transcript_dataframe(use_supabase: bool = True, csv_file_path: str =
     
     # 1. --- Configure Gemini API ---
     try:
-        genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
+        genai.configure(api_key=os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
         model = genai.GenerativeModel('gemini-2.5-flash')
     except KeyError:
-        print("Error: GOOGLE_API_KEY not found in environment.")
+        print("Error: Neither GEMINI_API_KEY nor GOOGLE_API_KEY found in environment.")
         return None, None
     except Exception as e:
         print(f"Error configuring Gemini: {e}")
-        return None, None
-        
-    if "WEATHER_API_KEY" not in os.environ:
-        print("Error: WEATHER_API_KEY not found in environment.")
         return None, None
 
     # 2. --- Load Data (Supabase or CSV) ---
@@ -183,10 +185,12 @@ def enhance_transcript_dataframe(use_supabase: bool = True, csv_file_path: str =
     gemini_cache = {} # This will be our master lookup
 
     # 3. --- Add 'national_crisis' Column (Weather API) ---
-    print("--- Checking for national crisis events (Weather API) ---")
-    df['national_crisis'] = df.apply(
-        _get_weather_disaster_status, axis=1, cache=weather_cache
-    )
+    print("--- Weather API temporarily disabled - setting all crisis events to False ---")
+    # print("--- Checking for national crisis events (Weather API) ---")
+    # df['national_crisis'] = df.apply(
+    #     _get_weather_disaster_status, axis=1, cache=weather_cache
+    # )
+    df['national_crisis'] = False
     
     # 4. --- Add 'network_outage' Column (Simulation) ---
     df['network_outage'] = False
