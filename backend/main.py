@@ -98,12 +98,11 @@ if not ELEVENLABS_API_KEY or not ELEVENLABS_AGENT_ID:
     print("⚠️  Warning: ElevenLabs credentials not found in .env file")
 
 if GOOGLE_API_KEY:
-    # Configure the new Gemini client
-    genai_client = genai.Client(api_key=GOOGLE_API_KEY)
+    # Configure Gemini API
+    genai.configure(api_key=GOOGLE_API_KEY)
     print("✅ Gemini API configured")
 else:
     print("⚠️  Warning: Google API key not found in .env file")
-    genai_client = None
 
 
 # Global cache for CHI data (refresh every hour)
