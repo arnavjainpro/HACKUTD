@@ -205,7 +205,7 @@ export default function CallModal({
   const handleTryItOut = () => {
     // Transition from mass-complete to demo call
     setCallState("incoming");
-    setDemoCustomerName("Demo Customer");
+    setDemoCustomerName("T-Mobile Customer Support");
     setDemoCustomerPhone("+1 (555) 000-0000");
   };
 
