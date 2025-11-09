@@ -104,56 +104,12 @@ export default function PMDashboardPage() {
                   </div>
                 </div>
 
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-2 text-center text-sm">
-                  <div className="bg-white dark:bg-gray-900 rounded p-2">
-                    <div className="font-bold text-gray-900 dark:text-white">
-                      {product.totalFeedback}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">Total</div>
-                  </div>
-                  <div className="bg-white dark:bg-gray-900 rounded p-2">
-                    <div className="font-bold text-red-600">
-                      {product.technicalIssues}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">Technical</div>
-                  </div>
-                  <div className="bg-white dark:bg-gray-900 rounded p-2">
-                    <div className="font-bold text-blue-600">
-                      {product.feedbackItems}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">Feedback</div>
-                  </div>
-                </div>
-
                 <div className="mt-4 text-center text-sm text-pink-600 dark:text-pink-400 font-medium group-hover:underline">
                   View Details & Take Action →
                 </div>
               </div>
             </Link>
           ))}
-        </div>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-800">
-          <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-            {products.reduce((sum, p) => sum + p.totalFeedback, 0)}
-          </div>
-          <div className="text-gray-600 dark:text-gray-400">Total Feedback Items</div>
-        </div>
-        <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-800">
-          <div className="text-3xl font-bold text-red-600 mb-1">
-            {products.reduce((sum, p) => sum + p.technicalIssues, 0)}
-          </div>
-          <div className="text-gray-600 dark:text-gray-400">Technical Issues</div>
-        </div>
-        <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-800">
-          <div className="text-3xl font-bold text-green-600 mb-1">
-            {products.filter(p => p.happinessScore >= 70).length}
-          </div>
-          <div className="text-gray-600 dark:text-gray-400">Healthy Products</div>
         </div>
       </div>
     </div>

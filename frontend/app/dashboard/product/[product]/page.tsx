@@ -116,6 +116,51 @@ export default function ProductDetailPage({ params }: { params: { product: strin
   const feedbackCount = allFeedback.filter(f => f.type === 'Feedback').length;
   const currentCHI = chiData[chiData.length - 1].score;
 
+  // Determine which recommendation to show based on product state
+  const getRecommendation = () => {
+    // If CHI is very low or there are many technical issues, show Fix
+    if (currentCHI < 40 || technicalCount > feedbackCount) {
+      return {
+        action: 'Fix',
+        header: 'Critical Issues Detected',
+        color: 'red',
+        points: [
+          'Critical technical issues affecting user experience',
+          'Multiple reports of connectivity and performance problems',
+          'Immediate escalation needed to prevent churn'
+        ]
+      };
+    }
+    // If CHI is high, show Reward
+    else if (currentCHI >= 70) {
+      return {
+        action: 'Reward',
+        header: 'High Customer Satisfaction',
+        color: 'green',
+        points: [
+          'Loyal customers show high satisfaction with current features',
+          'Opportunity to increase retention through targeted promotions',
+          'Personalized offers can boost customer lifetime value'
+        ]
+      };
+    }
+    // Otherwise show Engage
+    else {
+      return {
+        action: 'Engage',
+        header: 'Gather Deeper Insights',
+        color: 'purple',
+        points: [
+          'Direct customer outreach can gather deeper insights',
+          'Voice feedback provides richer context than text',
+          'Build stronger relationships through personal contact'
+        ]
+      };
+    }
+  };
+
+  const recommendation = getRecommendation();
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
@@ -183,78 +228,60 @@ export default function ProductDetailPage({ params }: { params: { product: strin
             })}
           </div>
         </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-200 dark:border-gray-800">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-gray-900 dark:text-white">
-              {allFeedback.length}
-            </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">Total Feedback</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-red-600">
-              {technicalCount}
-            </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">Technical Issues</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-600">
-              {feedbackCount}
-            </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">Customer Feedback</div>
-          </div>
-        </div>
       </div>
 
-      {/* All Feedback Items */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl p-6 shadow-lg border border-gray-200 dark:border-gray-800">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-          All Feedback & Issues
-        </h2>
-        
-        <div className="space-y-3 max-h-96 overflow-y-auto">
-          {allFeedback.map((item) => (
-            <div
-              key={item.id}
-              className={`rounded-lg p-4 border-2 ${
-                item.type === 'Technical'
-                  ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
-                  : 'bg-blue-50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-800'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span
-                      className={`text-xs font-bold px-2 py-1 rounded ${
-                        item.type === 'Technical'
-                          ? 'bg-red-600 text-white'
-                          : 'bg-blue-600 text-white'
-                      }`}
-                    >
-                      {item.type}
-                    </span>
-                    <span className="text-xs text-gray-400">#{item.id}</span>
-                  </div>
-                  <p className="text-gray-900 dark:text-white text-sm">
-                    {item.transcript}
-                  </p>
-                  {item.location && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                      📍 {item.location}
-                    </p>
-                  )}
-                  {item.phone && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                      📞 {item.phone}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
+      {/* T-Agent Recommendation */}
+      <div className={`rounded-xl p-8 border-2 shadow-lg ${
+        recommendation.color === 'green'
+          ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800'
+          : recommendation.color === 'red'
+          ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
+          : 'bg-purple-50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-800'
+      }`}>
+        <div className="flex items-center gap-3 mb-6">
+          <Sparkles className={`w-8 h-8 ${
+            recommendation.color === 'green'
+              ? 'text-green-600 dark:text-green-400'
+              : recommendation.color === 'red'
+              ? 'text-red-600 dark:text-red-400'
+              : 'text-purple-600 dark:text-purple-400'
+          }`} />
+          <div>
+            <h2 className={`text-3xl font-bold ${
+              recommendation.color === 'green'
+                ? 'text-green-600 dark:text-green-400'
+                : recommendation.color === 'red'
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-purple-600 dark:text-purple-400'
+            }`}>
+              {recommendation.action}
+            </h2>
+            <p className={`text-lg font-medium mt-1 ${
+              recommendation.color === 'green'
+                ? 'text-green-700 dark:text-green-300'
+                : recommendation.color === 'red'
+                ? 'text-red-700 dark:text-red-300'
+                : 'text-purple-700 dark:text-purple-300'
+            }`}>
+              {recommendation.header}
+            </p>
+          </div>
         </div>
+        
+        <ul className="space-y-3">
+          {recommendation.points.map((point, idx) => (
+            <li key={idx} className="text-base text-gray-700 dark:text-gray-300 flex items-start gap-3">
+              <span className={`inline-block w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                recommendation.color === 'green'
+                  ? 'bg-green-600'
+                  : recommendation.color === 'red'
+                  ? 'bg-red-600'
+                  : 'bg-purple-600'
+              }`} />
+              <span>{point}</span>
+            </li>
+          ))}
+        </ul>
       </div>
 
       {/* 3 Action Buttons */}
