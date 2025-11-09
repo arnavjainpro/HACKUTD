@@ -419,52 +419,131 @@ export default function ProductDetailPage({
         </div>
 
         {/* Graph */}
-        <div className="relative h-64">
-          <div className="absolute inset-0 flex items-end justify-between gap-2">
-            {quarterlyData.length > 0
-              ? quarterlyData.map((data, index) => {
-                  const height = `${data.score}%`;
+        <div className="relative h-64 bg-gray-50 dark:bg-gray-800/50 rounded-lg p-6">
+          {quarterlyData.length > 0 ? (
+            <div className="h-full relative">
+              {/* Y-axis labels */}
+              <div className="absolute left-0 top-0 bottom-8 flex flex-col justify-between text-xs text-gray-500 dark:text-gray-400">
+                <span>100%</span>
+                <span>75%</span>
+                <span>50%</span>
+                <span>25%</span>
+                <span>0%</span>
+              </div>
+              
+              {/* Grid lines */}
+              <div className="absolute left-12 right-0 top-0 bottom-8 flex flex-col justify-between">
+                {[0, 25, 50, 75, 100].map((val) => (
+                  <div key={val} className="border-t border-gray-200 dark:border-gray-700" />
+                ))}
+              </div>
+              
+              {/* Line graph container */}
+              <div className="absolute left-12 right-0 top-0 bottom-8">
+                {/* SVG for line and area (stretched) */}
+                <svg className="w-full h-full absolute inset-0" viewBox="0 0 1000 200" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#ef4444" />
+                      <stop offset="50%" stopColor="#eab308" />
+                      <stop offset="100%" stopColor="#22c55e" />
+                    </linearGradient>
+                    <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#ec4899" stopOpacity="0.3" />
+                      <stop offset="100%" stopColor="#ec4899" stopOpacity="0.05" />
+                    </linearGradient>
+                  </defs>
+                  
+                  {/* Area fill */}
+                  <polygon
+                    points={`
+                      ${quarterlyData.map((data, index) => {
+                        const x = (index / (quarterlyData.length - 1)) * 1000;
+                        const y = 200 - (data.score / 100) * 200;
+                        return `${x},${y}`;
+                      }).join(' ')}
+                      1000,200 0,200
+                    `}
+                    fill="url(#areaGradient)"
+                  />
+                  
+                  {/* Line path */}
+                  <polyline
+                    points={quarterlyData.map((data, index) => {
+                      const x = (index / (quarterlyData.length - 1)) * 1000;
+                      const y = 200 - (data.score / 100) * 200;
+                      return `${x},${y}`;
+                    }).join(' ')}
+                    fill="none"
+                    stroke="url(#lineGradient)"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="drop-shadow-md"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </svg>
+                
+                {/* Circular data points positioned absolutely */}
+                {quarterlyData.map((data, index) => {
+                  const xPercent = (index / (quarterlyData.length - 1)) * 100;
+                  const yPercent = 100 - data.score;
                   const isLast = index === quarterlyData.length - 1;
+                  
                   return (
                     <div
                       key={data.quarter}
-                      className="flex-1 flex flex-col items-center gap-2"
+                      className="absolute"
+                      style={{
+                        left: `${xPercent}%`,
+                        top: `${yPercent}%`,
+                        transform: 'translate(-50%, -50%)'
+                      }}
                     >
-                      <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-t relative group">
-                        <div
-                          className={`w-full rounded-t transition-all ${
-                            data.score >= 70
-                              ? "bg-green-500"
-                              : data.score >= 40
-                              ? "bg-yellow-500"
-                              : "bg-red-500"
-                          } ${isLast ? "ring-2 ring-pink-600" : ""}`}
-                          style={{ height }}
-                        >
-                          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-2 py-1 rounded text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                            {data.score}%
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                        {data.quarter}
-                      </div>
+                      <div
+                        className={`rounded-full ${
+                          data.score >= 70
+                            ? "bg-green-500"
+                            : data.score >= 40
+                            ? "bg-yellow-500"
+                            : "bg-red-500"
+                        } ${isLast ? "ring-4 ring-pink-500" : "ring-2 ring-white dark:ring-gray-800"}`}
+                        style={{
+                          width: isLast ? '16px' : '12px',
+                          height: isLast ? '16px' : '12px'
+                        }}
+                        title={`${data.quarter}: ${data.score}%`}
+                      />
                     </div>
                   );
-                })
-              : // Loading skeleton
-                [1, 2, 3, 4].map((i) => (
+                })}
+              </div>
+              
+              {/* X-axis labels */}
+              <div className="absolute left-12 right-0 bottom-0 flex justify-between">
+                {quarterlyData.map((data, index) => (
                   <div
-                    key={i}
-                    className="flex-1 flex flex-col items-center gap-2"
+                    key={data.quarter}
+                    className={`text-sm font-bold ${
+                      index === quarterlyData.length - 1
+                        ? 'text-pink-600 dark:text-pink-400'
+                        : 'text-gray-600 dark:text-gray-400'
+                    }`}
                   >
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-t h-32 animate-pulse" />
-                    <div className="text-xs font-medium text-gray-400">
-                      Q{i}
+                    {data.quarter}
+                    <div className="text-xs font-normal text-gray-500 dark:text-gray-400">
+                      {data.score}%
                     </div>
                   </div>
                 ))}
-          </div>
+              </div>
+            </div>
+          ) : (
+            // Loading skeleton
+            <div className="h-full flex items-center justify-center">
+              <div className="text-gray-400 dark:text-gray-600">Loading chart data...</div>
+            </div>
+          )}
         </div>
       </div>
 

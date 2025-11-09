@@ -6,6 +6,47 @@ import google.generativeai as genai
 import os
 import time
 import json # We need this to parse the batch response
+from supabase import create_client, Client
+
+# --- NEW: Supabase Data Loading Function ---
+
+def load_feedback_from_supabase() -> pd.DataFrame:
+    """Load feedback data from Supabase instead of CSV"""
+    
+    supabase_url = os.environ.get("SUPABASE_URL")
+    supabase_key = os.environ.get("SUPABASE_SERVICE_KEY")  # Use service key for backend
+    
+    if not supabase_url or not supabase_key:
+        print("Error: SUPABASE_URL or SUPABASE_SERVICE_KEY not found in environment.")
+        return None
+    
+    try:
+        supabase: Client = create_client(supabase_url, supabase_key)
+        
+        # Fetch all feedback records
+        response = supabase.table('feedback').select('*').execute()
+        
+        if not response.data:
+            print("No feedback data found in Supabase.")
+            return None
+            
+        # Convert to DataFrame
+        df = pd.DataFrame(response.data)
+        
+        print(f"✅ Loaded {len(df)} feedback records from Supabase")
+        
+        # Ensure required columns exist
+        required_cols = ['transcript', 'product_name', 'timestamp', 'location']
+        missing = [col for col in required_cols if col not in df.columns]
+        if missing:
+            print(f"Warning: Missing columns in Supabase data: {missing}")
+            
+        return df
+        
+    except Exception as e:
+        print(f"Error loading from Supabase: {e}")
+        return None
+
 
 # --- NEW: Gemini Batch Processing Function ---
 
@@ -95,8 +136,12 @@ def _get_weather_disaster_status(row, cache):
     cache[cache_key] = is_disaster
     return is_disaster
 
-# --- Main Function (Updated with Batching Logic) ---
-def enhance_transcript_dataframe(csv_file_path: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+# --- Main Function (Updated with Supabase and Batching Logic) ---
+def enhance_transcript_dataframe(use_supabase: bool = True, csv_file_path: str = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Enhanced version that loads from Supabase by default.
+    Set use_supabase=False and provide csv_file_path to use CSV instead.
+    """
     
     # 1. --- Configure Gemini API ---
     try:
@@ -113,11 +158,23 @@ def enhance_transcript_dataframe(csv_file_path: str) -> tuple[pd.DataFrame, pd.D
         print("Error: WEATHER_API_KEY not found in environment.")
         return None, None
 
-    # 2. --- Load and Prep DataFrame ---
-    try:
-        df = pd.read_csv(csv_file_path)
-    except FileNotFoundError:
-        print(f"Error: File not found at {csv_file_path}")
+    # 2. --- Load Data (Supabase or CSV) ---
+    if use_supabase:
+        print("--- Loading feedback from Supabase ---")
+        df = load_feedback_from_supabase()
+    else:
+        print("--- Loading feedback from CSV (legacy) ---")
+        if not csv_file_path:
+            print("Error: csv_file_path required when use_supabase=False")
+            return None, None
+        try:
+            df = pd.read_csv(csv_file_path)
+        except FileNotFoundError:
+            print(f"Error: File not found at {csv_file_path}")
+            return None, None
+    
+    if df is None or df.empty:
+        print("Error: No data loaded.")
         return None, None
 
     df['timestamp'] = pd.to_datetime(df['timestamp'])
@@ -206,3 +263,20 @@ def enhance_transcript_dataframe(csv_file_path: str) -> tuple[pd.DataFrame, pd.D
     
     # 9. --- Return BOTH DataFrames ---
     return df, df_chi
+
+
+if __name__ == "__main__":
+    # Run with Supabase by default
+    print("🚀 Running CHI calculation from Supabase...")
+    df_enhanced, df_chi = enhance_transcript_dataframe(use_supabase=True)
+    
+    if df_chi is not None:
+        print("\n📊 CHI Results:")
+        print(df_chi)
+        
+        # Optionally save to CSV for caching
+        output_path = "chi_results.csv"
+        df_chi.to_csv(output_path, index=False)
+        print(f"✅ CHI data saved to {output_path}")
+    else:
+        print("❌ Failed to calculate CHI")

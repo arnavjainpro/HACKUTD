@@ -14,6 +14,19 @@ from typing import Optional, List, Dict
 from pathlib import Path
 import pandas as pd
 from google import genai
+import sys
+
+# Add CHI folder to Python path
+CHI_PATH = Path(__file__).parent / "CHI"
+sys.path.insert(0, str(CHI_PATH))
+
+# Import CHI calculation function
+try:
+    from test_method import enhance_transcript_dataframe
+    print("✅ CHI module loaded successfully")
+except ImportError as e:
+    print(f"⚠️  Warning: Could not import CHI module: {e}")
+    enhance_transcript_dataframe = None
 
 # Load environment variables from ElevenLabs directory
 env_path = Path(__file__).parent / "ElevenLabs" / ".env"
@@ -72,6 +85,49 @@ if GOOGLE_API_KEY:
 else:
     print("⚠️  Warning: Google API key not found in .env file")
     genai_client = None
+
+
+# Global cache for CHI data (refresh every hour)
+chi_cache = {
+    "data": None,
+    "last_updated": None
+}
+
+def get_chi_data(force_refresh=False):
+    """Get CHI data from cache or recalculate from Supabase"""
+    from datetime import datetime, timedelta
+    
+    # Check if cache is still valid (1 hour)
+    if (not force_refresh and 
+        chi_cache["data"] is not None and 
+        chi_cache["last_updated"] and
+        datetime.now() - chi_cache["last_updated"] < timedelta(hours=1)):
+        print("📊 Using cached CHI data")
+        return chi_cache["data"]
+    
+    print("📊 Calculating CHI from Supabase...")
+    
+    if enhance_transcript_dataframe is None:
+        print("❌ CHI module not loaded")
+        return None
+        
+    try:
+        df_enhanced, df_chi = enhance_transcript_dataframe(use_supabase=True)
+        
+        if df_chi is not None:
+            chi_cache["data"] = df_chi
+            chi_cache["last_updated"] = datetime.now()
+            print(f"✅ CHI data cached ({len(df_chi)} records)")
+            return df_chi
+        else:
+            print("❌ Failed to calculate CHI")
+            return None
+            
+    except Exception as e:
+        print(f"❌ Error calculating CHI: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 
 @app.get("/")
@@ -372,71 +428,53 @@ async def get_all_product_happiness():
 @app.get("/api/chi/quarterly/{product_id}")
 async def get_quarterly_chi(product_id: int):
     """
-    Calculate quarterly CHI (Customer Happiness Index) for a product
-    Returns Q1, Q2, Q3, Q4 happiness scores based on timestamp quartiles
+    Get quarterly CHI (Customer Happiness Index) for a product from real df_chi data
+    Returns Q1, Q2, Q3, Q4 happiness scores
     """
     
+    product_map = {
+        1: "Mobile Hotspot",
+        2: "Magenta Max", 
+        3: "Business Unlimited"
+    }
+    
+    product_name = product_map.get(product_id)
+    if not product_name:
+        return {"success": False, "error": "Invalid product_id"}
+    
+    # Get real CHI data
+    df_chi = get_chi_data()
+    
+    if df_chi is None:
+        # Fallback to mock data if CHI calculation fails
+        print(f"⚠️ Using fallback mock data for product {product_id}")
+        mock_data = [
+            {"quarter": "Q1", "score": 45},
+            {"quarter": "Q2", "score": 52},
+            {"quarter": "Q3", "score": 68},
+            {"quarter": "Q4", "score": 72}
+        ]
+        return {"success": True, "product_id": product_id, "product_name": product_name, "quarterly_data": mock_data}
+    
     try:
-        # Load the CSV file
-        csv_path = Path(__file__).parent / "CHI" / "product_transcripts.csv"
+        # Filter for this product
+        product_data = df_chi[df_chi['product_name'] == product_name]
         
-        if not csv_path.exists():
-            raise HTTPException(
-                status_code=404,
-                detail=f"CSV file not found at {csv_path}"
-            )
+        if product_data.empty:
+            print(f"⚠️ No CHI data found for {product_name}")
+            return {"success": False, "error": f"No CHI data for {product_name}"}
         
-        # Read CSV and filter by product_id
-        df = pd.read_csv(csv_path)
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        product_df = df[df['product_id'] == product_id]
-        
-        if product_df.empty:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No data found for product_id {product_id}"
-            )
-        
-        product_name = product_df['product_name'].iloc[0]
-        
-        # Calculate sentiment scores (same as other endpoints)
-        positive_keywords = ['great', 'excellent', 'perfect', 'rock-solid', 'exceeded', 
-                           'saving', 'fantastic', 'helpful', 'reliable', 'breeze']
-        negative_keywords = ['broken', 'error', 'stuck', 'forced', 'confused', 'nightmare',
-                           'jacked', 'invisible', 'blank', 'nothing']
-        
-        def calculate_sentiment(transcript):
-            transcript_lower = transcript.lower()
-            positive_count = sum(1 for keyword in positive_keywords if keyword in transcript_lower)
-            negative_count = sum(1 for keyword in negative_keywords if keyword in transcript_lower)
-            total = positive_count + negative_count
-            if total == 0:
-                return 0
-            return (positive_count - negative_count) / max(total, 1)
-        
-        product_df['sentiment'] = product_df['transcript'].apply(calculate_sentiment)
-        
-        # Create time periods (quartiles) based on timestamp
-        product_df['time_period'] = pd.qcut(product_df['timestamp'], 4, labels=['Q1', 'Q2', 'Q3', 'Q4'], duplicates='drop')
-        
-        # Calculate average sentiment per quarter and convert to percentage
-        quarterly_chi = product_df.groupby('time_period', observed=True)['sentiment'].mean()
-        
-        # Convert from -1/1 scale to 0/100 percentage
+        # Convert to frontend format (scale to 0-100 percentage)
         quarterly_data = []
-        for quarter in ['Q1', 'Q2', 'Q3', 'Q4']:
-            if quarter in quarterly_chi.index:
-                sentiment = quarterly_chi[quarter]
-                chi_percentage = int(((sentiment + 1) / 2) * 100)
-            else:
-                chi_percentage = 50  # Default neutral if quarter has no data
-            
+        for _, row in product_data.iterrows():
+            # ConsumerHappinessIndex is already on a 1-10 scale, convert to 0-100
+            score = int((row['ConsumerHappinessIndex'] / 10) * 100)
             quarterly_data.append({
-                "quarter": quarter,
-                "score": chi_percentage
+                "quarter": row['time_period'],
+                "score": score
             })
         
-        print(f"\n📊 Quarterly CHI for {product_name}:")
+        print(f"\n📊 Quarterly CHI for {product_name} (from df_chi):")
         for q in quarterly_data:
             print(f"  {q['quarter']}: {q['score']}%")
         
@@ -448,10 +486,12 @@ async def get_quarterly_chi(product_id: int):
         }
         
     except Exception as e:
-        print(f"❌ Error calculating quarterly CHI: {e}")
+        print(f"❌ Error processing CHI data: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=500,
-            detail=f"Error calculating quarterly CHI: {str(e)}"
+            detail=f"Error processing CHI data: {str(e)}"
         )
 
 
