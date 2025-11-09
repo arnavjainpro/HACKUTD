@@ -28,7 +28,11 @@ interface QuarterlyData {
 }
 
 export default function PMDashboardPage() {
-  const { theme } = usePMDashboardStore();
+  const {
+    theme,
+    setQuarterlyData: setQuarterlyDataStore,
+    setCHIData: setCHIDataStore,
+  } = usePMDashboardStore();
   const [chiData, setCHIData] = useState<Record<number, CHIProduct>>({});
   const [quarterlyData, setQuarterlyData] = useState<
     Record<number, QuarterlyData[]>
@@ -86,11 +90,22 @@ export default function PMDashboardPage() {
         quarterlyResults.forEach((result) => {
           if (result) {
             quarterlyMap[result.productId] = result.data;
+            // Store in Zustand for sharing with product detail pages
+            setQuarterlyDataStore(result.productId, result.data);
           }
         });
 
         console.log("📊 Quarterly data loaded:", quarterlyMap);
         setQuarterlyData(quarterlyMap);
+
+        // Also store CHI data in Zustand
+        Object.entries(data.products).forEach(([productId, chiProduct]) => {
+          const chiProd = chiProduct as CHIProduct;
+          setCHIDataStore(Number(productId), {
+            happiness_percentage: chiProd.happiness_percentage,
+            total_transcripts: chiProd.total_transcripts,
+          });
+        });
       } catch (error) {
         console.error("❌ Error fetching CHI data:", error);
         // Clear all loading states on error

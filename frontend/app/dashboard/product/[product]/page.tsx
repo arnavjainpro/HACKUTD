@@ -44,8 +44,15 @@ export default function ProductDetailPage({
   params: { product: string };
 }) {
   const productName = decodeURIComponent(params.product);
-  const { theme, isEscalating, isCalling, setIsEscalating, setIsCalling } =
-    usePMDashboardStore();
+  const {
+    theme,
+    isEscalating,
+    isCalling,
+    setIsEscalating,
+    setIsCalling,
+    quarterlyDataCache,
+    chiDataCache,
+  } = usePMDashboardStore();
 
   const [allFeedback, setAllFeedback] = useState<FeedbackItem[]>([]);
   const [escalationResult, setEscalationResult] = useState<string | null>(null);
@@ -80,12 +87,46 @@ export default function ProductDetailPage({
     document.documentElement.classList.toggle("dark", theme === "dark");
     setAllFeedback(getFeedbackByProduct(productName));
 
-    // Fetch Gemini recommendation and quarterly CHI data from backend
+    // Map product names to product IDs
     const productId = productIdMap[productName];
     console.log("🔍 Product:", productName, "-> ID:", productId);
 
     if (productId) {
-      // Fetch Gemini recommendation
+      // Check if we already have quarterly data in the cache
+      const cachedQuarterly = quarterlyDataCache[productId];
+      const cachedCHI = chiDataCache[productId];
+
+      if (cachedQuarterly && cachedQuarterly.length > 0) {
+        console.log("✅ Using cached quarterly data:", cachedQuarterly);
+        setQuarterlyData(cachedQuarterly);
+        const q4Score = cachedQuarterly[cachedQuarterly.length - 1].score;
+        setCurrentCHI(q4Score);
+      } else {
+        // Fallback: fetch from backend if not in cache
+        console.log("📊 Fetching quarterly data from backend (not in cache)");
+        fetch(`http://localhost:8000/api/chi/quarterly/${productId}`)
+          .then((res) => res.json())
+          .then((data) => {
+            console.log("📊 Quarterly response:", data);
+            if (data.success) {
+              setQuarterlyData(data.quarterly_data);
+              const q4Score =
+                data.quarterly_data[data.quarterly_data.length - 1].score;
+              setCurrentCHI(q4Score);
+              console.log(
+                "✅ Quarterly CHI loaded:",
+                data.quarterly_data,
+                "Q4 Score:",
+                q4Score
+              );
+            }
+          })
+          .catch((err) =>
+            console.error("❌ Error loading quarterly data:", err)
+          );
+      }
+
+      // Fetch Gemini recommendation (always fresh)
       setIsLoadingRecommendation(true);
       fetch(`http://localhost:8000/api/chi/recommendation/${productId}`)
         .then((res) => res.json())
@@ -102,31 +143,10 @@ export default function ProductDetailPage({
         })
         .catch((err) => console.error("❌ Error loading recommendation:", err))
         .finally(() => setIsLoadingRecommendation(false));
-
-      // Fetch quarterly CHI data
-      console.log("📊 Fetching quarterly data for product ID:", productId);
-      fetch(`http://localhost:8000/api/chi/quarterly/${productId}`)
-        .then((res) => res.json())
-        .then((data) => {
-          console.log("📊 Quarterly response:", data);
-          if (data.success) {
-            setQuarterlyData(data.quarterly_data);
-            const q4Score =
-              data.quarterly_data[data.quarterly_data.length - 1].score;
-            setCurrentCHI(q4Score);
-            console.log(
-              "✅ Quarterly CHI loaded:",
-              data.quarterly_data,
-              "Q4 Score:",
-              q4Score
-            );
-          }
-        })
-        .catch((err) => console.error("❌ Error loading quarterly data:", err));
     } else {
       console.warn("⚠️ No product ID found for:", productName);
     }
-  }, [theme, productName]);
+  }, [theme, productName, quarterlyDataCache, chiDataCache]);
 
   const handleEscalateTech = async () => {
     setIsEscalating(true);
@@ -430,50 +450,77 @@ export default function ProductDetailPage({
                 <span>25%</span>
                 <span>0%</span>
               </div>
-              
+
               {/* Grid lines */}
               <div className="absolute left-12 right-0 top-0 bottom-8 flex flex-col justify-between">
                 {[0, 25, 50, 75, 100].map((val) => (
-                  <div key={val} className="border-t border-gray-200 dark:border-gray-700" />
+                  <div
+                    key={val}
+                    className="border-t border-gray-200 dark:border-gray-700"
+                  />
                 ))}
               </div>
-              
+
               {/* Line graph container */}
               <div className="absolute left-12 right-0 top-0 bottom-8">
                 {/* SVG for line and area (stretched) */}
-                <svg className="w-full h-full absolute inset-0" viewBox="0 0 1000 200" preserveAspectRatio="none">
+                <svg
+                  className="w-full h-full absolute inset-0"
+                  viewBox="0 0 1000 200"
+                  preserveAspectRatio="none"
+                >
                   <defs>
-                    <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <linearGradient
+                      id="lineGradient"
+                      x1="0%"
+                      y1="0%"
+                      x2="100%"
+                      y2="0%"
+                    >
                       <stop offset="0%" stopColor="#ef4444" />
                       <stop offset="50%" stopColor="#eab308" />
                       <stop offset="100%" stopColor="#22c55e" />
                     </linearGradient>
-                    <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                    <linearGradient
+                      id="areaGradient"
+                      x1="0%"
+                      y1="0%"
+                      x2="0%"
+                      y2="100%"
+                    >
                       <stop offset="0%" stopColor="#ec4899" stopOpacity="0.3" />
-                      <stop offset="100%" stopColor="#ec4899" stopOpacity="0.05" />
+                      <stop
+                        offset="100%"
+                        stopColor="#ec4899"
+                        stopOpacity="0.05"
+                      />
                     </linearGradient>
                   </defs>
-                  
+
                   {/* Area fill */}
                   <polygon
                     points={`
-                      ${quarterlyData.map((data, index) => {
-                        const x = (index / (quarterlyData.length - 1)) * 1000;
-                        const y = 200 - (data.score / 100) * 200;
-                        return `${x},${y}`;
-                      }).join(' ')}
+                      ${quarterlyData
+                        .map((data, index) => {
+                          const x = (index / (quarterlyData.length - 1)) * 1000;
+                          const y = 200 - (data.score / 100) * 200;
+                          return `${x},${y}`;
+                        })
+                        .join(" ")}
                       1000,200 0,200
                     `}
                     fill="url(#areaGradient)"
                   />
-                  
+
                   {/* Line path */}
                   <polyline
-                    points={quarterlyData.map((data, index) => {
-                      const x = (index / (quarterlyData.length - 1)) * 1000;
-                      const y = 200 - (data.score / 100) * 200;
-                      return `${x},${y}`;
-                    }).join(' ')}
+                    points={quarterlyData
+                      .map((data, index) => {
+                        const x = (index / (quarterlyData.length - 1)) * 1000;
+                        const y = 200 - (data.score / 100) * 200;
+                        return `${x},${y}`;
+                      })
+                      .join(" ")}
                     fill="none"
                     stroke="url(#lineGradient)"
                     strokeWidth="3"
@@ -483,13 +530,13 @@ export default function ProductDetailPage({
                     vectorEffect="non-scaling-stroke"
                   />
                 </svg>
-                
+
                 {/* Circular data points positioned absolutely */}
                 {quarterlyData.map((data, index) => {
                   const xPercent = (index / (quarterlyData.length - 1)) * 100;
                   const yPercent = 100 - data.score;
                   const isLast = index === quarterlyData.length - 1;
-                  
+
                   return (
                     <div
                       key={data.quarter}
@@ -497,7 +544,7 @@ export default function ProductDetailPage({
                       style={{
                         left: `${xPercent}%`,
                         top: `${yPercent}%`,
-                        transform: 'translate(-50%, -50%)'
+                        transform: "translate(-50%, -50%)",
                       }}
                     >
                       <div
@@ -507,10 +554,14 @@ export default function ProductDetailPage({
                             : data.score >= 40
                             ? "bg-yellow-500"
                             : "bg-red-500"
-                        } ${isLast ? "ring-4 ring-pink-500" : "ring-2 ring-white dark:ring-gray-800"}`}
+                        } ${
+                          isLast
+                            ? "ring-4 ring-pink-500"
+                            : "ring-2 ring-white dark:ring-gray-800"
+                        }`}
                         style={{
-                          width: isLast ? '16px' : '12px',
-                          height: isLast ? '16px' : '12px'
+                          width: isLast ? "16px" : "12px",
+                          height: isLast ? "16px" : "12px",
                         }}
                         title={`${data.quarter}: ${data.score}%`}
                       />
@@ -518,7 +569,7 @@ export default function ProductDetailPage({
                   );
                 })}
               </div>
-              
+
               {/* X-axis labels */}
               <div className="absolute left-12 right-0 bottom-0 flex justify-between">
                 {quarterlyData.map((data, index) => (
@@ -526,8 +577,8 @@ export default function ProductDetailPage({
                     key={data.quarter}
                     className={`text-sm font-bold ${
                       index === quarterlyData.length - 1
-                        ? 'text-pink-600 dark:text-pink-400'
-                        : 'text-gray-600 dark:text-gray-400'
+                        ? "text-pink-600 dark:text-pink-400"
+                        : "text-gray-600 dark:text-gray-400"
                     }`}
                   >
                     {data.quarter}
@@ -541,7 +592,9 @@ export default function ProductDetailPage({
           ) : (
             // Loading skeleton
             <div className="h-full flex items-center justify-center">
-              <div className="text-gray-400 dark:text-gray-600">Loading chart data...</div>
+              <div className="text-gray-400 dark:text-gray-600">
+                Loading chart data...
+              </div>
             </div>
           )}
         </div>
