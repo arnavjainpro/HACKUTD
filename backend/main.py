@@ -561,13 +561,13 @@ async def get_quarterly_chi(product_id: int):
 @app.get("/api/test-gemini")
 async def test_gemini():
     """Test Gemini API connection"""
-    if not genai_client:
+    if not GOOGLE_API_KEY:
         raise HTTPException(status_code=500, detail="Gemini not configured")
     
     try:
-        response = genai_client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents="Say hello in JSON format with a 'message' field"
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(
+            "Say hello in JSON format with a 'message' field"
         )
         return {"success": True, "response": response.text}
     except Exception as e:
@@ -588,7 +588,7 @@ async def generate_emails(request: EmailGenerationRequest):
     Returns both emails in a single response for efficiency
     """
     
-    if not genai_client:
+    if not GOOGLE_API_KEY:
         raise HTTPException(status_code=500, detail="Gemini not configured")
     
     try:
@@ -637,10 +637,8 @@ Make both emails professional, concise, and actionable. The tech ticket should b
         print(f"\n📧 Generating emails for {request.product_name}...")
         
         # Call Gemini API
-        response = genai_client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt
-        )
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(prompt)
         
         # Parse response
         response_text = response.text.strip()
@@ -689,7 +687,7 @@ async def get_product_recommendation(product_id: int):
     Along with 3 actionable bullet points
     """
     
-    if not genai_client:
+    if not GOOGLE_API_KEY:
         raise HTTPException(
             status_code=500,
             detail="Google API key not configured"
@@ -782,11 +780,9 @@ Make the bullet points specific to the actual issues/feedback found in the trans
 
         print(f"\n🤖 Asking Gemini for recommendation on {product_name}...")
         
-        # Call Gemini API with new client
-        response = genai_client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt
-        )
+        # Call Gemini API
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(prompt)
         
         # Parse the response
         response_text = response.text.strip()
