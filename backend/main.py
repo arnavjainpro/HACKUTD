@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 from typing import Optional, List, Dict
 from pathlib import Path
 import pandas as pd
-from google import genai
+import google.generativeai as genai
 import sys
 from supabase import create_client, Client
 
