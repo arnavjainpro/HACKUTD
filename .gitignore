@@ -89,3 +89,7 @@ next-env.d.ts
 *.njsproj
 *.sln
 *.sw?
+
+# Agent environment variables
+.env.agent
+backend/.env.agent
