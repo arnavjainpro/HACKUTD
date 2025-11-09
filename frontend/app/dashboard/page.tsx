@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePMDashboardStore } from "@/lib/pmStore";
+import { supabase } from "@/lib/supabaseClient";
 import { calculateProductHappiness } from "@/lib/feedbackUtils";
 import {
   TrendingDown,
@@ -49,6 +50,24 @@ export default function PMDashboardPage() {
     };
 
     fetchCHIData();
+  }, []);
+
+  // Quick Supabase connection test (optional)
+  useEffect(() => {
+    const testSupabase = async () => {
+      try {
+        const { data, error } = await supabase.from("feedback").select("*").limit(1);
+        if (error) {
+          console.error("Supabase connection failed:", error);
+        } else {
+          console.log("Supabase connected ✅", data);
+        }
+      } catch (e) {
+        console.error("Supabase test error", e);
+      }
+    };
+
+    testSupabase();
   }, []);
 
   const products = calculateProductHappiness();
