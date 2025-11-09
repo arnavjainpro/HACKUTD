@@ -2,6 +2,22 @@
 
 This folder contains the AI agent that securely sends customer recommendations to the dashboard.
 
+## ⚠️ FIRST TIME SETUP REQUIRED
+
+**Before running the agent, you MUST complete Auth0 setup!**
+
+👉 **See: `AUTH0_SETUP_REQUIRED.md` for step-by-step instructions.**
+
+Quick check:
+```bash
+./check-auth0-setup.sh
+```
+
+If you see "Auth0 authentication successful!" you're ready to go.  
+If you see "Unauthorized", follow the setup guide.
+
+---
+
 ## 📁 Files
 
 - **`agent.js`** - Main agent script that authenticates and sends data
