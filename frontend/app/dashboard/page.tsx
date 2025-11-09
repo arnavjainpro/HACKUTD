@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePMDashboardStore } from "@/lib/pmStore";
 import { supabase } from "@/lib/supabaseClient";
 import { calculateProductHappiness } from "@/lib/feedbackUtils";
+import { chiApi } from "@/lib/api";
 import {
   TrendingDown,
   AlertTriangle,
@@ -41,8 +42,7 @@ export default function PMDashboardPage() {
     const fetchCHIData = async () => {
       try {
         console.log("📊 Fetching CHI happiness data from backend...");
-        const response = await fetch("http://localhost:8000/api/chi/happiness");
-        const data = await response.json();
+        const data = await chiApi.getHappiness();
 
         if (data.success) {
           console.log("✅ CHI Data loaded:", data.products);
@@ -52,8 +52,7 @@ export default function PMDashboardPage() {
         // Fetch quarterly data for each product (1, 2, 3)
         const quarterlyPromises = [1, 2, 3].map(async (productId) => {
           try {
-            const res = await fetch(`http://localhost:8000/api/chi/quarterly/${productId}`);
-            const quarterlyResponse = await res.json();
+            const quarterlyResponse = await chiApi.getQuarterlyData(productId);
             if (quarterlyResponse.success) {
               return { productId, data: quarterlyResponse.quarterly_data };
             }
@@ -140,11 +139,7 @@ export default function PMDashboardPage() {
       );
 
       try {
-        const response = await fetch(
-          `http://localhost:8000/api/chi/product/${productId}`
-        );
-        const data = await response.json();
-
+        const data = await chiApi.getProductData(productId);
         console.log("📊 CHI Response:", data);
       } catch (error) {
         console.error("❌ Error fetching CHI data:", error);
