@@ -1,0 +1,98 @@
+[
+  {
+    "id": 1,
+    "product": "5G Home Internet",
+    "type": "Technical",
+    "transcript": "My connection in Austin drops every 10 minutes during peak hours.",
+    "location": "Austin, TX",
+    "timestamp": "2025-11-07T14:32:00Z"
+  },
+  {
+    "id": 2,
+    "product": "5G Home Internet",
+    "type": "Technical",
+    "transcript": "I'm getting 5mbps speeds in Dallas, not the advertised 5G speeds.",
+    "location": "Dallas, TX",
+    "timestamp": "2025-11-07T15:45:00Z"
+  },
+  {
+    "id": 3,
+    "product": "5G Home Internet",
+    "type": "Technical",
+    "transcript": "Signal keeps cutting out in my apartment in Houston. Unusable for work calls.",
+    "location": "Houston, TX",
+    "timestamp": "2025-11-07T16:20:00Z"
+  },
+  {
+    "id": 4,
+    "product": "5G Home Internet",
+    "type": "Feedback",
+    "transcript": "The setup instructions were impossible to follow. The mobile app is extremely confusing.",
+    "phone": "+1-555-0101",
+    "timestamp": "2025-11-07T10:15:00Z"
+  },
+  {
+    "id": 5,
+    "product": "5G Home Internet",
+    "type": "Feedback",
+    "transcript": "Why did my bill suddenly go up by $20? The pricing structure is not clear at all.",
+    "phone": "+1-555-0102",
+    "timestamp": "2025-11-07T11:30:00Z"
+  },
+  {
+    "id": 6,
+    "product": "5G Home Internet",
+    "type": "Feedback",
+    "transcript": "Customer service took 45 minutes to answer. Very frustrated with support wait times.",
+    "phone": "+1-555-0103",
+    "timestamp": "2025-11-07T13:00:00Z"
+  },
+  {
+    "id": 7,
+    "product": "Magenta Max",
+    "type": "Feedback",
+    "transcript": "I absolutely love the Netflix perk! Best part of this plan.",
+    "phone": "+1-555-0104",
+    "timestamp": "2025-11-06T09:00:00Z"
+  },
+  {
+    "id": 8,
+    "product": "Magenta Max",
+    "type": "Feedback",
+    "transcript": "The international roaming feature saved me on my trip to Europe. Amazing!",
+    "phone": "+1-555-0105",
+    "timestamp": "2025-11-06T14:22:00Z"
+  },
+  {
+    "id": 9,
+    "product": "Magenta Max",
+    "type": "Technical",
+    "transcript": "5G coverage in downtown Chicago is spotty in certain buildings.",
+    "location": "Chicago, IL",
+    "timestamp": "2025-11-06T16:45:00Z"
+  },
+  {
+    "id": 10,
+    "product": "T-Mobile One",
+    "type": "Feedback",
+    "transcript": "Wish I could upgrade my data without changing my entire plan.",
+    "phone": "+1-555-0106",
+    "timestamp": "2025-11-05T11:00:00Z"
+  },
+  {
+    "id": 11,
+    "product": "T-Mobile One",
+    "type": "Technical",
+    "transcript": "Data speeds throttled after hitting the cap. Very slow performance.",
+    "location": "Phoenix, AZ",
+    "timestamp": "2025-11-05T15:30:00Z"
+  },
+  {
+    "id": 12,
+    "product": "Business Unlimited",
+    "type": "Feedback",
+    "transcript": "The business dashboard for managing multiple lines is excellent. Very intuitive!",
+    "phone": "+1-555-0107",
+    "timestamp": "2025-11-04T10:15:00Z"
+  }
+]

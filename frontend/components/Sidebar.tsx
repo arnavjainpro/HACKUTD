@@ -2,14 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, BarChart3, Settings, LogOut, UserCircle } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Settings, LogOut } from 'lucide-react';
 
 export default function Sidebar() {
   const pathname = usePathname();
 
   const links = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/dashboard/customer', label: 'Customer', icon: UserCircle },
     { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
     { href: '/dashboard/settings', label: 'Settings', icon: Settings },
   ];
