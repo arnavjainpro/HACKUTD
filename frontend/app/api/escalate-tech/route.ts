@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Initialize Gemini
-    const model = genAI.getGenerativeModel({ model: 'gemini-pro' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     // Create the prompt
     const prompt = `You are a T-Mobile Product Manager creating a JIRA ticket for the engineering team.

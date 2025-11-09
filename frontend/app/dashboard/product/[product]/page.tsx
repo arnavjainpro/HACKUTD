@@ -15,6 +15,28 @@ import {
 import Link from "next/link";
 import type { FeedbackItem } from "@/lib/feedbackUtils";
 import CallModal from "@/components/CallModal";
+import EmailModal from "@/components/EmailModal";
+
+interface GeminiRecommendation {
+  action: string;
+  header: string;
+  color: string;
+  points: string[];
+}
+
+interface EmailData {
+  subject: string;
+  body: string;
+}
+
+interface CHIRecommendationResponse {
+  success: boolean;
+  product_id: number;
+  product_name: string;
+  chi_percentage: number;
+  total_transcripts: number;
+  recommendation: GeminiRecommendation;
+}
 
 export default function ProductDetailPage({
   params,
@@ -31,52 +53,135 @@ export default function ProductDetailPage({
   const [promotionResult, setPromotionResult] = useState<string | null>(null);
   const [isGeneratingPromotion, setIsGeneratingPromotion] = useState(false);
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
+  const [geminiRecommendation, setGeminiRecommendation] =
+    useState<GeminiRecommendation | null>(null);
+  const [isLoadingRecommendation, setIsLoadingRecommendation] = useState(false);
+  const [currentCHI, setCurrentCHI] = useState(0);
+  const [quarterlyData, setQuarterlyData] = useState<
+    Array<{ quarter: string; score: number }>
+  >([]);
 
-  // Mock CHI data over time (last 7 days)
-  const chiData = [
-    { day: "Mon", score: 45 },
-    { day: "Tue", score: 42 },
-    { day: "Wed", score: 38 },
-    { day: "Thu", score: 35 },
-    { day: "Fri", score: 30 },
-    { day: "Sat", score: 25 },
-    {
-      day: "Sun",
-      score:
-        productName === "Business Unlimited"
-          ? 100
-          : productName === "Magenta Max"
-          ? 50
-          : 0,
-    },
-  ];
+  // Email modal states
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [emailModalType, setEmailModalType] = useState<"tech" | "promotion">(
+    "tech"
+  );
+  const [techEmail, setTechEmail] = useState<EmailData | null>(null);
+  const [promotionEmail, setPromotionEmail] = useState<EmailData | null>(null);
+
+  // Map product names to product IDs
+  const productIdMap: { [key: string]: number } = {
+    "Mobile Hotspot": 1,
+    "Magenta Max": 2,
+    "Business Unlimited": 3,
+  };
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     setAllFeedback(getFeedbackByProduct(productName));
+
+    // Fetch Gemini recommendation and quarterly CHI data from backend
+    const productId = productIdMap[productName];
+    console.log("🔍 Product:", productName, "-> ID:", productId);
+
+    if (productId) {
+      // Fetch Gemini recommendation
+      setIsLoadingRecommendation(true);
+      fetch(`http://localhost:8000/api/chi/recommendation/${productId}`)
+        .then((res) => res.json())
+        .then((data: CHIRecommendationResponse) => {
+          if (data.success) {
+            setGeminiRecommendation(data.recommendation);
+            console.log(
+              "✅ Gemini Recommendation loaded:",
+              data.recommendation,
+              "CHI:",
+              data.chi_percentage
+            );
+          }
+        })
+        .catch((err) => console.error("❌ Error loading recommendation:", err))
+        .finally(() => setIsLoadingRecommendation(false));
+
+      // Fetch quarterly CHI data
+      console.log("📊 Fetching quarterly data for product ID:", productId);
+      fetch(`http://localhost:8000/api/chi/quarterly/${productId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          console.log("📊 Quarterly response:", data);
+          if (data.success) {
+            setQuarterlyData(data.quarterly_data);
+            const q4Score =
+              data.quarterly_data[data.quarterly_data.length - 1].score;
+            setCurrentCHI(q4Score);
+            console.log(
+              "✅ Quarterly CHI loaded:",
+              data.quarterly_data,
+              "Q4 Score:",
+              q4Score
+            );
+          }
+        })
+        .catch((err) => console.error("❌ Error loading quarterly data:", err));
+    } else {
+      console.warn("⚠️ No product ID found for:", productName);
+    }
   }, [theme, productName]);
 
   const handleEscalateTech = async () => {
     setIsEscalating(true);
     setEscalationResult(null);
 
-    const technicalIssues = allFeedback.filter((f) => f.type === "Technical");
-
     try {
-      const response = await fetch("/api/escalate-tech", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          product: productName,
-          issues: technicalIssues.map((t) => t.transcript),
-        }),
-      });
+      const productId = productIdMap[productName];
+
+      // Fetch transcripts from backend
+      const transcriptsResponse = await fetch(
+        `http://localhost:8000/api/chi/product/${productId}`
+      );
+      const transcriptsData = await transcriptsResponse.json();
+
+      // Check if the API call was successful and has data
+      if (!transcriptsData.success || !transcriptsData.rows) {
+        throw new Error("Failed to fetch transcripts data");
+      }
+
+      const transcripts = transcriptsData.rows.map((t: any) => t.transcript);
+
+      const response = await fetch(
+        "http://localhost:8000/api/generate-emails",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            product_name: productName,
+            product_id: productId,
+            transcripts: transcripts,
+            email_type: "tech_ticket",
+          }),
+        }
+      );
 
       const data = await response.json();
-      setEscalationResult(data.ticket);
+
+      if (data.success) {
+        // Store tech email data
+        setTechEmail({
+          subject: data.tech_ticket.subject,
+          body: data.tech_ticket.body,
+        });
+
+        // Open modal with tech email
+        setEmailModalType("tech");
+        setIsEmailModalOpen(true);
+
+        console.log("✅ Tech email generated:", data.tech_ticket);
+      } else {
+        setEscalationResult("Error: Failed to generate email");
+      }
     } catch (error) {
-      console.error("Escalation failed:", error);
-      setEscalationResult("Error: Failed to generate ticket");
+      console.error("Email generation failed:", error);
+      setEscalationResult("Error: Failed to generate email");
     } finally {
       setIsEscalating(false);
     }
@@ -86,20 +191,53 @@ export default function ProductDetailPage({
     setIsGeneratingPromotion(true);
     setPromotionResult(null);
 
-    const feedbackItems = allFeedback.filter((f) => f.type === "Feedback");
-
     try {
-      const response = await fetch("/api/generate-promotion", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          product: productName,
-          feedback: feedbackItems.map((f) => f.transcript),
-        }),
-      });
+      const productId = productIdMap[productName];
+
+      // Fetch transcripts from backend
+      const transcriptsResponse = await fetch(
+        `http://localhost:8000/api/chi/product/${productId}`
+      );
+      const transcriptsData = await transcriptsResponse.json();
+
+      // Check if the API call was successful and has data
+      if (!transcriptsData.success || !transcriptsData.rows) {
+        throw new Error("Failed to fetch transcripts data");
+      }
+
+      const transcripts = transcriptsData.rows.map((t: any) => t.transcript);
+
+      const response = await fetch(
+        "http://localhost:8000/api/generate-emails",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            product_name: productName,
+            product_id: productId,
+            transcripts: transcripts,
+            email_type: "loyalty_promotion",
+          }),
+        }
+      );
 
       const data = await response.json();
-      setPromotionResult(data.promotion);
+
+      if (data.success) {
+        // Store promotion email data
+        setPromotionEmail({
+          subject: data.loyalty_promotion.subject,
+          body: data.loyalty_promotion.body,
+        });
+
+        // Open modal with promotion email
+        setEmailModalType("promotion");
+        setIsEmailModalOpen(true);
+
+        console.log("✅ Promotion email generated:", data.loyalty_promotion);
+      } else {
+        setPromotionResult("Error: Failed to generate email");
+      }
     } catch (error) {
       console.error("Promotion generation failed:", error);
       setPromotionResult("Error: Failed to generate promotion");
@@ -111,6 +249,33 @@ export default function ProductDetailPage({
   const handleMassCall = async () => {
     // Open the call modal first
     setIsCallModalOpen(true);
+  };
+
+  const handleSendEmail = () => {
+    // Close modal and show confirmation
+    setIsEmailModalOpen(false);
+
+    if (emailModalType === "tech") {
+      setEscalationResult(
+        `✅ Tech support email sent to chithra.sathish.akilan@gmail.com\n\nSubject: ${techEmail?.subject}\n\n${techEmail?.body}`
+      );
+    } else {
+      setPromotionResult(
+        `✅ Promotion email sent to customers@gmail.com\n\nSubject: ${promotionEmail?.subject}\n\n${promotionEmail?.body}`
+      );
+    }
+
+    console.log(
+      `📧 Email sent - Type: ${emailModalType}, Recipient: ${
+        emailModalType === "tech"
+          ? "chithra.sathish.akilan@gmail.com"
+          : "customers@gmail.com"
+      }`
+    );
+  };
+
+  const handleCloseEmailModal = () => {
+    setIsEmailModalOpen(false);
   };
 
   const handleAcceptCall = async () => {
@@ -166,9 +331,9 @@ export default function ProductDetailPage({
     (f) => f.type === "Technical"
   ).length;
   const feedbackCount = allFeedback.filter((f) => f.type === "Feedback").length;
-  const currentCHI = chiData[chiData.length - 1].score;
+  // currentCHI is now managed by state and updated from backend
 
-  // Determine which recommendation to show based on product state
+  // Determine which recommendation to show based on product state (fallback)
   const getRecommendation = () => {
     // If CHI is very low or there are many technical issues, show Fix
     if (currentCHI < 40 || technicalCount > feedbackCount) {
@@ -211,7 +376,8 @@ export default function ProductDetailPage({
     }
   };
 
-  const recommendation = getRecommendation();
+  // Use Gemini recommendation if available, otherwise fallback to logic
+  const recommendation = geminiRecommendation || getRecommendation();
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -239,7 +405,7 @@ export default function ProductDetailPage({
               Customer Happiness Index (CHI) Trend
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Last 7 days performance
+              Quarterly performance breakdown (Q1 - Q4)
             </p>
           </div>
           <div className="text-right">
@@ -247,7 +413,7 @@ export default function ProductDetailPage({
               {currentCHI}%
             </div>
             <div className="text-sm text-gray-500 dark:text-gray-400">
-              Current CHI
+              Current CHI (Q4)
             </div>
           </div>
         </div>
@@ -255,106 +421,135 @@ export default function ProductDetailPage({
         {/* Graph */}
         <div className="relative h-64">
           <div className="absolute inset-0 flex items-end justify-between gap-2">
-            {chiData.map((data, index) => {
-              const height = `${data.score}%`;
-              const isLast = index === chiData.length - 1;
-              return (
-                <div
-                  key={data.day}
-                  className="flex-1 flex flex-col items-center gap-2"
-                >
-                  <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-t relative group">
+            {quarterlyData.length > 0
+              ? quarterlyData.map((data, index) => {
+                  const height = `${data.score}%`;
+                  const isLast = index === quarterlyData.length - 1;
+                  return (
                     <div
-                      className={`w-full rounded-t transition-all ${
-                        data.score >= 70
-                          ? "bg-green-500"
-                          : data.score >= 40
-                          ? "bg-yellow-500"
-                          : "bg-red-500"
-                      } ${isLast ? "ring-2 ring-pink-600" : ""}`}
-                      style={{ height }}
+                      key={data.quarter}
+                      className="flex-1 flex flex-col items-center gap-2"
                     >
-                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-2 py-1 rounded text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                        {data.score}%
+                      <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-t relative group">
+                        <div
+                          className={`w-full rounded-t transition-all ${
+                            data.score >= 70
+                              ? "bg-green-500"
+                              : data.score >= 40
+                              ? "bg-yellow-500"
+                              : "bg-red-500"
+                          } ${isLast ? "ring-2 ring-pink-600" : ""}`}
+                          style={{ height }}
+                        >
+                          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-2 py-1 rounded text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            {data.score}%
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                        {data.quarter}
                       </div>
                     </div>
+                  );
+                })
+              : // Loading skeleton
+                [1, 2, 3, 4].map((i) => (
+                  <div
+                    key={i}
+                    className="flex-1 flex flex-col items-center gap-2"
+                  >
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-t h-32 animate-pulse" />
+                    <div className="text-xs font-medium text-gray-400">
+                      Q{i}
+                    </div>
                   </div>
-                  <div className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                    {data.day}
-                  </div>
-                </div>
-              );
-            })}
+                ))}
           </div>
         </div>
       </div>
 
       {/* T-Agent Recommendation */}
-      <div
-        className={`rounded-xl p-8 border-2 shadow-lg ${
-          recommendation.color === "green"
-            ? "bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800"
-            : recommendation.color === "red"
-            ? "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
-            : "bg-purple-50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-800"
-        }`}
-      >
-        <div className="flex items-center gap-3 mb-6">
-          <Sparkles
-            className={`w-8 h-8 ${
-              recommendation.color === "green"
-                ? "text-green-600 dark:text-green-400"
-                : recommendation.color === "red"
-                ? "text-red-600 dark:text-red-400"
-                : "text-purple-600 dark:text-purple-400"
-            }`}
-          />
-          <div>
-            <h2
-              className={`text-3xl font-bold ${
+      {isLoadingRecommendation ? (
+        <div className="rounded-xl p-8 border-2 shadow-lg bg-gray-50 dark:bg-gray-900/10 border-gray-200 dark:border-gray-800">
+          <div className="flex items-center gap-3 mb-6">
+            <Loader2 className="w-8 h-8 text-pink-600 animate-spin" />
+            <div>
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
+                Analyzing...
+              </h2>
+              <p className="text-lg font-medium text-gray-600 dark:text-gray-400 mt-1">
+                Gemini AI is analyzing product data and customer feedback
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
+          className={`rounded-xl p-8 border-2 shadow-lg ${
+            recommendation.color === "green"
+              ? "bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800"
+              : recommendation.color === "red"
+              ? "bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800"
+              : "bg-purple-50 dark:bg-purple-900/10 border-purple-200 dark:border-purple-800"
+          }`}
+        >
+          <div className="flex items-center gap-3 mb-6">
+            <Sparkles
+              className={`w-8 h-8 ${
                 recommendation.color === "green"
                   ? "text-green-600 dark:text-green-400"
                   : recommendation.color === "red"
                   ? "text-red-600 dark:text-red-400"
                   : "text-purple-600 dark:text-purple-400"
               }`}
-            >
-              {recommendation.action}
-            </h2>
-            <p
-              className={`text-lg font-medium mt-1 ${
-                recommendation.color === "green"
-                  ? "text-green-700 dark:text-green-300"
-                  : recommendation.color === "red"
-                  ? "text-red-700 dark:text-red-300"
-                  : "text-purple-700 dark:text-purple-300"
-              }`}
-            >
-              {recommendation.header}
-            </p>
-          </div>
-        </div>
-
-        <ul className="space-y-3">
-          {recommendation.points.map((point, idx) => (
-            <li
-              key={idx}
-              className="text-base text-gray-700 dark:text-gray-300 flex items-start gap-3"
-            >
-              <span
-                className={`inline-block w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+            />
+            <div>
+              <h2
+                className={`text-3xl font-bold ${
                   recommendation.color === "green"
-                    ? "bg-green-600"
+                    ? "text-green-600 dark:text-green-400"
                     : recommendation.color === "red"
-                    ? "bg-red-600"
-                    : "bg-purple-600"
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-purple-600 dark:text-purple-400"
                 }`}
-              />
-              <span>{point}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
+              >
+                {recommendation.action}
+              </h2>
+              <p
+                className={`text-lg font-medium mt-1 ${
+                  recommendation.color === "green"
+                    ? "text-green-700 dark:text-green-300"
+                    : recommendation.color === "red"
+                    ? "text-red-700 dark:text-red-300"
+                    : "text-purple-700 dark:text-purple-300"
+                }`}
+              >
+                {recommendation.header}
+              </p>
+            </div>
+          </div>
+
+          <ul className="space-y-3">
+            {recommendation.points.map((point, idx) => (
+              <li
+                key={idx}
+                className="text-base text-gray-700 dark:text-gray-300 flex items-start gap-3"
+              >
+                <span
+                  className={`inline-block w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                    recommendation.color === "green"
+                      ? "bg-green-600"
+                      : recommendation.color === "red"
+                      ? "bg-red-600"
+                      : "bg-purple-600"
+                  }`}
+                />
+                <span>{point}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* 3 Action Buttons */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -477,6 +672,7 @@ export default function ProductDetailPage({
         onClose={handleDeclineCall}
         onAccept={handleAcceptCall}
         onDecline={handleDeclineCall}
+        isMassCall={true}
         customerName={(() => {
           const firstFeedbackWithPhone = allFeedback.filter(
             (f) => f.type === "Feedback" && f.phone
@@ -495,6 +691,28 @@ export default function ProductDetailPage({
             ?.id.toString() || "unknown"
         }
         product={productName}
+      />
+
+      <EmailModal
+        isOpen={isEmailModalOpen}
+        onClose={handleCloseEmailModal}
+        emailType={emailModalType}
+        subject={
+          emailModalType === "tech"
+            ? techEmail?.subject || ""
+            : promotionEmail?.subject || ""
+        }
+        body={
+          emailModalType === "tech"
+            ? techEmail?.body || ""
+            : promotionEmail?.body || ""
+        }
+        recipient={
+          emailModalType === "tech"
+            ? "chithra.sathish.akilan@gmail.com"
+            : "customers@gmail.com"
+        }
+        onSend={handleSendEmail}
       />
     </div>
   );
