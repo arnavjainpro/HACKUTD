@@ -106,8 +106,20 @@ export function calculateProductHappiness(): ProductHappiness[] {
     });
   });
   
-  // Sort by happiness score (lowest first - problems first!)
-  return results.sort((a, b) => a.happinessScore - b.happinessScore);
+  // Sort by:
+  // 1. Active products (productId 1-3) first, sorted by happiness score (lowest first)
+  // 2. Upcoming products (productId 0 or > 3) last, sorted by happiness score
+  return results.sort((a, b) => {
+    const aIsActive = a.productId >= 1 && a.productId <= 3;
+    const bIsActive = b.productId >= 1 && b.productId <= 3;
+    
+    // Active products come before upcoming
+    if (aIsActive && !bIsActive) return -1;
+    if (!aIsActive && bIsActive) return 1;
+    
+    // Within same category, sort by happiness score (lowest first)
+    return a.happinessScore - b.happinessScore;
+  });
 }
 
 // Get all feedback

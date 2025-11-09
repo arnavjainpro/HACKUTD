@@ -123,23 +123,34 @@ export default function PMDashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {productsWithCHI.map((product) => (
+          {productsWithCHI.map((product) => {
+            const isUpcoming = product.productId === 0 || product.productId > 3;
+            return (
             <Link
               key={product.product}
-              href={`/dashboard/product/${encodeURIComponent(product.product)}`}
+              href={isUpcoming ? '#' : `/dashboard/product/${encodeURIComponent(product.product)}`}
               className="block"
               onClick={(e) => {
+                if (isUpcoming) {
+                  e.preventDefault();
+                  return;
+                }
                 // Fetch CHI data on click (but still navigate)
                 handleProductClick(product.productId, product.product);
               }}
             >
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6 border-2 border-transparent hover:border-pink-500 transition-all cursor-pointer group">
+              <div className={`bg-gray-50 dark:bg-gray-800 rounded-lg p-6 border-2 border-transparent transition-all ${isUpcoming ? 'opacity-40 cursor-default' : 'hover:border-pink-500 cursor-pointer'} group`}>
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-pink-600 dark:group-hover:text-pink-400">
                       {product.product}
                     </h3>
-                    {product.chiLoaded && (
+                    {isUpcoming && (
+                      <span className="text-xs bg-gray-300 dark:bg-gray-700 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded-full">
+                        Upcoming
+                      </span>
+                    )}
+                    {product.chiLoaded && !isUpcoming && (
                       <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded-full">
                         CHI
                       </span>
@@ -208,11 +219,12 @@ export default function PMDashboardPage() {
                 </div>
 
                 <div className="mt-4 text-center text-sm text-pink-600 dark:text-pink-400 font-medium group-hover:underline">
-                  View Details & Take Action →
+                  {isUpcoming ? 'Coming Soon' : 'View Details & Take Action →'}
                 </div>
               </div>
             </Link>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
