@@ -277,7 +277,7 @@ def enhance_transcript_dataframe(use_supabase: bool = True, csv_file_path: str =
     # 9. --- Return BOTH DataFrames ---
     return df, df_chi
 
-
+#this is a test comment
 if __name__ == "__main__":
     # Run with Supabase by default
     print("🚀 Running CHI calculation from Supabase...")
