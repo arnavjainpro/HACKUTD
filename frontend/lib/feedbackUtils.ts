@@ -12,13 +12,13 @@ export interface FeedbackItem {
 
 export interface ProductHappiness {
   product: string;
-  productId: number; // Maps to CHI CSV product_id
+  productId: number;
   happinessScore: number;
   totalFeedback: number;
   technicalIssues: number;
   feedbackItems: number;
   positiveCount: number;
-  dailyChange: number; // Positive = improving, Negative = worsening
+  quarterlyChange: number; // Positive = improving, Negative = worsening
 }
 
 // Simple sentiment analysis based on keywords
@@ -90,9 +90,10 @@ export function calculateProductHappiness(): ProductHappiness[] {
     
     const finalScore = Math.max(0, Math.min(100, happinessScore));
     
-    // Calculate daily change
-    const yesterdayScore = yesterdayScores[product] || finalScore;
-    const dailyChange = finalScore - yesterdayScore;
+    // Calculate quarterly change (Q3 to Q4)
+    // For mock data, simulate quarterly change based on score
+    const lastQuarterScore = yesterdayScores[product] || finalScore;
+    const quarterlyChange = finalScore - lastQuarterScore;
     
     results.push({
       product,
@@ -102,7 +103,7 @@ export function calculateProductHappiness(): ProductHappiness[] {
       technicalIssues: technical,
       feedbackItems: feedback,
       positiveCount: positive,
-      dailyChange,
+      quarterlyChange,
     });
   });
   

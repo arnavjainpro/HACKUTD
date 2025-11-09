@@ -21,16 +21,22 @@ interface CHIProduct {
   total_transcripts: number;
 }
 
+interface QuarterlyData {
+  quarter: string;
+  score: number;
+}
+
 export default function PMDashboardPage() {
   const { theme } = usePMDashboardStore();
   const [chiData, setCHIData] = useState<Record<number, CHIProduct>>({});
+  const [quarterlyData, setQuarterlyData] = useState<Record<number, QuarterlyData[]>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
 
-  // Fetch CHI happiness data on component mount
+  // Fetch CHI happiness data and quarterly data on component mount
   useEffect(() => {
     const fetchCHIData = async () => {
       try {
@@ -42,6 +48,32 @@ export default function PMDashboardPage() {
           console.log("✅ CHI Data loaded:", data.products);
           setCHIData(data.products);
         }
+        
+        // Fetch quarterly data for each product (1, 2, 3)
+        const quarterlyPromises = [1, 2, 3].map(async (productId) => {
+          try {
+            const res = await fetch(`http://localhost:8000/api/chi/quarterly/${productId}`);
+            const quarterlyResponse = await res.json();
+            if (quarterlyResponse.success) {
+              return { productId, data: quarterlyResponse.quarterly_data };
+            }
+          } catch (err) {
+            console.error(`Error fetching quarterly data for product ${productId}:`, err);
+          }
+          return null;
+        });
+        
+        const quarterlyResults = await Promise.all(quarterlyPromises);
+        const quarterlyMap: Record<number, QuarterlyData[]> = {};
+        quarterlyResults.forEach((result) => {
+          if (result) {
+            quarterlyMap[result.productId] = result.data;
+          }
+        });
+        
+        console.log("📊 Quarterly data loaded:", quarterlyMap);
+        setQuarterlyData(quarterlyMap);
+        
       } catch (error) {
         console.error("❌ Error fetching CHI data:", error);
       } finally {
@@ -72,15 +104,31 @@ export default function PMDashboardPage() {
 
   const products = calculateProductHappiness();
 
-  // Merge CHI data with product data
+  // Merge CHI data with product data and quarterly data
   const productsWithCHI = products.map((product) => {
     const chiProduct = chiData[product.productId];
+    const quarterly = quarterlyData[product.productId];
+    
+    // Get Q4 score and Q3 score for change calculation
+    let currentScore = product.happinessScore;
+    let previousScore = product.happinessScore;
+    let quarterlyChange = product.quarterlyChange;
+    
+    if (quarterly && quarterly.length >= 4) {
+      // Use Q4 (last quarter) as current score
+      currentScore = quarterly[3].score;
+      // Use Q3 (third quarter) as previous score
+      previousScore = quarterly[2].score;
+      // Calculate quarterly change
+      quarterlyChange = currentScore - previousScore;
+    }
+    
     return {
       ...product,
-      // Override happiness score with CHI data if available
-      happinessScore:
-        chiProduct?.happiness_percentage ?? product.happinessScore,
-      chiLoaded: !!chiProduct,
+      // Override happiness score with quarterly Q4 data if available
+      happinessScore: currentScore,
+      quarterlyChange: quarterlyChange,
+      chiLoaded: !!chiProduct || !!quarterly,
     };
   });
 
@@ -190,28 +238,27 @@ export default function PMDashboardPage() {
                     />
                   </div>
 
-                  {/* Daily Change Indicator */}
+                  {/* Quarterly Change Indicator */}
                   <div className="flex items-center gap-1 text-xs">
-                    {product.dailyChange > 0 ? (
+                    {product.quarterlyChange > 0 ? (
                       <>
                         <TrendingUp className="w-3 h-3 text-green-600" />
                         <span className="text-green-600 dark:text-green-400 font-medium">
-                          Improved by {product.dailyChange}% since yesterday
+                          Improved by {product.quarterlyChange}% since last quarter
                         </span>
                       </>
-                    ) : product.dailyChange < 0 ? (
+                    ) : product.quarterlyChange < 0 ? (
                       <>
                         <TrendingDown className="w-3 h-3 text-red-600" />
                         <span className="text-red-600 dark:text-red-400 font-medium">
-                          Declined by {Math.abs(product.dailyChange)}% since
-                          yesterday
+                          Declined by {Math.abs(product.quarterlyChange)}% since last quarter
                         </span>
                       </>
                     ) : (
                       <>
                         <Minus className="w-3 h-3 text-gray-500" />
                         <span className="text-gray-500 dark:text-gray-400 font-medium">
-                          No change since yesterday
+                          No change since last quarter
                         </span>
                       </>
                     )}

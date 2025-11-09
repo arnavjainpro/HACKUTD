@@ -15,6 +15,7 @@ from pathlib import Path
 import pandas as pd
 from google import genai
 import sys
+from supabase import create_client, Client
 
 # Add CHI folder to Python path
 CHI_PATH = Path(__file__).parent / "CHI"
@@ -31,6 +32,24 @@ except ImportError as e:
 # Load environment variables from ElevenLabs directory
 env_path = Path(__file__).parent / "ElevenLabs" / ".env"
 load_dotenv(dotenv_path=env_path)
+
+# Also load from backend .env for Supabase credentials
+backend_env_path = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=backend_env_path)
+
+# Initialize Supabase client
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY")
+
+supabase_client: Optional[Client] = None
+if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+    try:
+        supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+        print("✅ Supabase client initialized")
+    except Exception as e:
+        print(f"⚠️  Warning: Failed to initialize Supabase: {e}")
+else:
+    print("⚠️  Warning: Supabase credentials not found in .env")
 
 app = FastAPI(
     title="ElevenLabs Agent API",
@@ -278,9 +297,9 @@ async def get_agent_info():
 
 
 @app.get("/api/chi/product/{product_id}")
-async def get_product_chi_data(product_id: int):
+async def get_chi_by_product(product_id: int):
     """
-    Get all CSV rows for a specific product ID from the CHI data
+    Get CHI (Customer Happiness Index) data for a specific product from Supabase
     
     Product IDs:
     1 - Mobile Hotspot
@@ -288,57 +307,65 @@ async def get_product_chi_data(product_id: int):
     3 - Business Unlimited
     """
     
+    if not supabase_client:
+        raise HTTPException(
+            status_code=503,
+            detail="Supabase not configured. Please add SUPABASE_URL and SUPABASE_SERVICE_KEY to .env"
+        )
+    
     try:
-        # Load the CSV file
-        csv_path = Path(__file__).parent / "CHI" / "product_transcripts.csv"
+        # Map product_id to product_name
+        product_map = {
+            1: "Mobile Hotspot",
+            2: "Magenta Max",
+            3: "Business Unlimited"
+        }
         
-        if not csv_path.exists():
+        product_name = product_map.get(product_id)
+        if not product_name:
             raise HTTPException(
-                status_code=404,
-                detail=f"CSV file not found at {csv_path}"
+                status_code=400,
+                detail=f"Invalid product_id {product_id}. Must be 1, 2, or 3."
             )
         
-        # Read CSV
-        df = pd.read_csv(csv_path)
+        # Fetch from Supabase feedback table
+        response = supabase_client.table('feedback').select('*').eq('product_name', product_name).execute()
         
-        # Filter by product_id
-        filtered_df = df[df['product_id'] == product_id]
-        
-        if filtered_df.empty:
+        if not response.data:
             return {
                 "success": False,
                 "product_id": product_id,
-                "message": f"No data found for product_id {product_id}",
+                "product_name": product_name,
+                "message": f"No data found for {product_name}",
                 "rows": []
             }
         
-        # Convert to list of dictionaries
-        rows = filtered_df.to_dict('records')
+        rows = response.data
         
         # Print to terminal
         print(f"\n{'='*80}")
         print(f"📊 Product ID: {product_id}")
-        print(f"📦 Product Name: {rows[0]['product_name'] if rows else 'Unknown'}")
+        print(f"📦 Product Name: {product_name}")
         print(f"📝 Total Rows: {len(rows)}")
         print(f"{'='*80}\n")
         
         for idx, row in enumerate(rows, 1):
             print(f"Row {idx}:")
-            print(f"  Location: {row['location']}")
-            print(f"  Transcript: {row['transcript']}")
-            print(f"  Timestamp: {row['timestamp']}")
+            print(f"  Location: {row.get('location', 'N/A')}")
+            print(f"  Transcript: {row.get('transcript', 'N/A')}")
+            print(f"  Timestamp: {row.get('timestamp', 'N/A')}")
             print("-" * 80)
         
         return {
             "success": True,
             "product_id": product_id,
-            "product_name": rows[0]['product_name'] if rows else None,
+            "product_name": product_name,
             "total_rows": len(rows),
             "rows": rows
         }
         
     except Exception as e:
-        print(f"❌ Error reading CHI data: {e}")
+        print(f"❌ Error reading CHI data from Supabase: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Error reading CHI data: {str(e)}"
@@ -348,22 +375,28 @@ async def get_product_chi_data(product_id: int):
 @app.get("/api/chi/happiness")
 async def get_all_product_happiness():
     """
-    Calculate and return happiness index for all products
+    Calculate and return happiness index for all products from Supabase
     Returns happiness as percentage (0-100) based on sentiment analysis
     """
     
+    if not supabase_client:
+        raise HTTPException(
+            status_code=503,
+            detail="Supabase not configured. Please add SUPABASE_URL and SUPABASE_SERVICE_KEY to .env"
+        )
+    
     try:
-        # Load the CSV file
-        csv_path = Path(__file__).parent / "CHI" / "product_transcripts.csv"
+        # Fetch all feedback from Supabase
+        response = supabase_client.table('feedback').select('*').execute()
         
-        if not csv_path.exists():
+        if not response.data:
             raise HTTPException(
                 status_code=404,
-                detail=f"CSV file not found at {csv_path}"
+                detail="No feedback data found in Supabase"
             )
         
-        # Read CSV
-        df = pd.read_csv(csv_path)
+        # Convert to DataFrame for easier processing
+        df = pd.DataFrame(response.data)
         
         # Simple sentiment analysis based on keywords
         positive_keywords = ['great', 'excellent', 'perfect', 'rock-solid', 'exceeded', 
@@ -373,7 +406,7 @@ async def get_all_product_happiness():
         
         def calculate_sentiment(transcript):
             """Calculate sentiment score from -1 (negative) to 1 (positive)"""
-            transcript_lower = transcript.lower()
+            transcript_lower = str(transcript).lower()
             positive_count = sum(1 for keyword in positive_keywords if keyword in transcript_lower)
             negative_count = sum(1 for keyword in negative_keywords if keyword in transcript_lower)
             
@@ -386,12 +419,19 @@ async def get_all_product_happiness():
         # Calculate sentiment for each row
         df['sentiment'] = df['transcript'].apply(calculate_sentiment)
         
+        # Map product names to IDs
+        product_id_map = {
+            "Mobile Hotspot": 1,
+            "Magenta Max": 2,
+            "Business Unlimited": 3
+        }
+        
         # Calculate happiness index per product (convert from -1/1 to 0-100 percentage)
         product_happiness = {}
         
-        for product_id in df['product_id'].unique():
-            product_df = df[df['product_id'] == product_id]
-            product_name = product_df['product_name'].iloc[0]
+        for product_name in df['product_name'].unique():
+            product_df = df[df['product_name'] == product_name]
+            product_id = product_id_map.get(product_name, 0)
             
             # Average sentiment score
             avg_sentiment = product_df['sentiment'].mean()
@@ -400,8 +440,8 @@ async def get_all_product_happiness():
             # -1 = 0%, 0 = 50%, 1 = 100%
             happiness_percentage = int(((avg_sentiment + 1) / 2) * 100)
             
-            product_happiness[int(product_id)] = {
-                "product_id": int(product_id),
+            product_happiness[product_id] = {
+                "product_id": product_id,
                 "product_name": product_name,
                 "happiness_percentage": happiness_percentage,
                 "avg_sentiment": round(avg_sentiment, 3),
@@ -446,14 +486,38 @@ async def get_quarterly_chi(product_id: int):
     df_chi = get_chi_data()
     
     if df_chi is None:
-        # Fallback to mock data if CHI calculation fails
-        print(f"⚠️ Using fallback mock data for product {product_id}")
-        mock_data = [
-            {"quarter": "Q1", "score": 45},
-            {"quarter": "Q2", "score": 52},
-            {"quarter": "Q3", "score": 68},
-            {"quarter": "Q4", "score": 72}
-        ]
+        # Fallback to mock data if CHI calculation fails - DIFFERENT DATA PER PRODUCT
+        print(f"⚠️  Using fallback mock data for product {product_id}")
+        
+        # Product-specific mock data
+        mock_data_by_product = {
+            1: [  # Mobile Hotspot - showing decline
+                {"quarter": "Q1", "score": 55},
+                {"quarter": "Q2", "score": 48},
+                {"quarter": "Q3", "score": 35},
+                {"quarter": "Q4", "score": 28}
+            ],
+            2: [  # Magenta Max - showing recovery
+                {"quarter": "Q1", "score": 30},
+                {"quarter": "Q2", "score": 42},
+                {"quarter": "Q3", "score": 58},
+                {"quarter": "Q4", "score": 65}
+            ],
+            3: [  # Business Unlimited - showing strong performance
+                {"quarter": "Q1", "score": 65},
+                {"quarter": "Q2", "score": 72},
+                {"quarter": "Q3", "score": 78},
+                {"quarter": "Q4", "score": 85}
+            ]
+        }
+        
+        mock_data = mock_data_by_product.get(product_id, [
+            {"quarter": "Q1", "score": 50},
+            {"quarter": "Q2", "score": 55},
+            {"quarter": "Q3", "score": 60},
+            {"quarter": "Q4", "score": 65}
+        ])
+        
         return {"success": True, "product_id": product_id, "product_name": product_name, "quarterly_data": mock_data}
     
     try:
@@ -621,7 +685,7 @@ Make both emails professional, concise, and actionable. The tech ticket should b
 @app.get("/api/chi/recommendation/{product_id}")
 async def get_product_recommendation(product_id: int):
     """
-    Use Gemini AI to analyze product CHI data and transcripts
+    Use Gemini AI to analyze product CHI data and transcripts from Supabase
     Returns one of three recommendations: Engage, Fix, or Reward
     Along with 3 actionable bullet points
     """
@@ -632,28 +696,39 @@ async def get_product_recommendation(product_id: int):
             detail="Google API key not configured"
         )
     
+    if not supabase_client:
+        raise HTTPException(
+            status_code=503,
+            detail="Supabase not configured"
+        )
+    
     try:
-        # Load the CSV file
-        csv_path = Path(__file__).parent / "CHI" / "product_transcripts.csv"
+        # Map product_id to product_name
+        product_map = {
+            1: "Mobile Hotspot",
+            2: "Magenta Max",
+            3: "Business Unlimited"
+        }
         
-        if not csv_path.exists():
+        product_name = product_map.get(product_id)
+        if not product_name:
             raise HTTPException(
-                status_code=404,
-                detail=f"CSV file not found at {csv_path}"
+                status_code=400,
+                detail=f"Invalid product_id {product_id}"
             )
         
-        # Read CSV and filter by product_id
-        df = pd.read_csv(csv_path)
+        # Fetch data from Supabase
+        response = supabase_client.table('feedback').select('*').eq('product_name', product_name).execute()
+        
+        if not response.data:
+            raise HTTPException(
+                status_code=404,
+                detail=f"No data found for {product_name}"
+            )
+        
+        # Convert to DataFrame
+        df = pd.DataFrame(response.data)
         df['timestamp'] = pd.to_datetime(df['timestamp'])  # Parse timestamps
-        product_df = df[df['product_id'] == product_id]
-        
-        if product_df.empty:
-            raise HTTPException(
-                status_code=404,
-                detail=f"No data found for product_id {product_id}"
-            )
-        
-        product_name = product_df['product_name'].iloc[0]
         
         # Calculate CHI score using same sentiment analysis
         positive_keywords = ['great', 'excellent', 'perfect', 'rock-solid', 'exceeded', 
@@ -662,7 +737,7 @@ async def get_product_recommendation(product_id: int):
                            'jacked', 'invisible', 'blank', 'nothing']
         
         def calculate_sentiment(transcript):
-            transcript_lower = transcript.lower()
+            transcript_lower = str(transcript).lower()
             positive_count = sum(1 for keyword in positive_keywords if keyword in transcript_lower)
             negative_count = sum(1 for keyword in negative_keywords if keyword in transcript_lower)
             total = positive_count + negative_count
@@ -670,19 +745,19 @@ async def get_product_recommendation(product_id: int):
                 return 0
             return (positive_count - negative_count) / max(total, 1)
         
-        product_df['sentiment'] = product_df['transcript'].apply(calculate_sentiment)
-        avg_sentiment = product_df['sentiment'].mean()
+        df['sentiment'] = df['transcript'].apply(calculate_sentiment)
+        avg_sentiment = df['sentiment'].mean()
         chi_percentage = int(((avg_sentiment + 1) / 2) * 100)
         
         # Prepare transcript samples for Gemini (limit to 10 most recent)
-        recent_transcripts = product_df.nlargest(10, 'timestamp')['transcript'].tolist()
+        recent_transcripts = df.nlargest(10, 'timestamp')['transcript'].tolist()
         transcript_summary = "\n".join([f"- {t}" for t in recent_transcripts])
         
         # Create Gemini prompt
         prompt = f"""You are analyzing customer feedback for a telecom product called "{product_name}".
 
 Product CHI (Customer Happiness Index): {chi_percentage}% 
-Total Transcripts Analyzed: {len(product_df)}
+Total Transcripts Analyzed: {len(df)}
 
 Sample Customer Transcripts:
 {transcript_summary}
@@ -733,7 +808,7 @@ Make the bullet points specific to the actual issues/feedback found in the trans
             "product_id": product_id,
             "product_name": product_name,
             "chi_percentage": chi_percentage,
-            "total_transcripts": len(product_df),
+            "total_transcripts": len(df),
             "recommendation": recommendation
         }
         
