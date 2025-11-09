@@ -54,6 +54,8 @@ export function calculateProductHappiness(): ProductHappiness[] {
     'Magenta Max': 85,
     'T-Mobile One': 30,
     'Business Unlimited': 100,
+    'Prepaid Plans': 45,
+    'Mobile Hotspot': 70,
   };
   
   // Calculate happiness score for each product

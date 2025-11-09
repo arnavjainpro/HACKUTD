@@ -94,5 +94,53 @@
     "transcript": "The business dashboard for managing multiple lines is excellent. Very intuitive!",
     "phone": "+1-555-0107",
     "timestamp": "2025-11-04T10:15:00Z"
+  },
+  {
+    "id": 13,
+    "product": "Prepaid Plans",
+    "type": "Technical",
+    "transcript": "Auto-pay failed twice this month. Had to manually reload each time in Miami.",
+    "location": "Miami, FL",
+    "timestamp": "2025-11-07T09:30:00Z"
+  },
+  {
+    "id": 14,
+    "product": "Prepaid Plans",
+    "type": "Technical",
+    "transcript": "Data not working after refill. Took 6 hours to activate in San Antonio.",
+    "location": "San Antonio, TX",
+    "timestamp": "2025-11-06T18:00:00Z"
+  },
+  {
+    "id": 15,
+    "product": "Prepaid Plans",
+    "type": "Feedback",
+    "transcript": "The prepaid app is clunky and hard to use. Need better UX design.",
+    "phone": "+1-555-0108",
+    "timestamp": "2025-11-06T12:45:00Z"
+  },
+  {
+    "id": 16,
+    "product": "Mobile Hotspot",
+    "type": "Feedback",
+    "transcript": "Love having unlimited hotspot! Perfect for my RV travels.",
+    "phone": "+1-555-0109",
+    "timestamp": "2025-11-05T16:00:00Z"
+  },
+  {
+    "id": 17,
+    "product": "Mobile Hotspot",
+    "type": "Technical",
+    "transcript": "Hotspot randomly disconnects all devices in Seattle area. Very unreliable.",
+    "location": "Seattle, WA",
+    "timestamp": "2025-11-05T14:20:00Z"
+  },
+  {
+    "id": 18,
+    "product": "Mobile Hotspot",
+    "type": "Technical",
+    "transcript": "Device overheats after 30 minutes of use. Battery drains extremely fast.",
+    "location": "Portland, OR",
+    "timestamp": "2025-11-04T11:30:00Z"
   }
 ]
