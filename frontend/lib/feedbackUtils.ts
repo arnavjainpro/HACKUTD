@@ -12,6 +12,7 @@ export interface FeedbackItem {
 
 export interface ProductHappiness {
   product: string;
+  productId: number; // Maps to CHI CSV product_id
   happinessScore: number;
   totalFeedback: number;
   technicalIssues: number;
@@ -46,7 +47,6 @@ export function calculateProductHappiness(): ProductHappiness[] {
     }
     productMap.get(item.product)!.push(item);
   });
-  
   // Simulated "yesterday's" scores for trend calculation
   // In production, this would come from historical data
   const yesterdayScores: { [key: string]: number } = {
@@ -56,6 +56,17 @@ export function calculateProductHappiness(): ProductHappiness[] {
     'Business Unlimited': 100,
     'Prepaid Plans': 45,
     'Mobile Hotspot': 70,
+  };
+
+  // Map product names to CHI CSV product_id
+  const productIdMap: { [key: string]: number } = {
+    'Mobile Hotspot': 1,
+    'Magenta Max': 2,
+    'Business Unlimited': 3,
+    // Filler products (not in CHI CSV)
+    '5G Home Internet': 4,
+    'T-Mobile One': 5,
+    'Prepaid Plans': 6,
   };
   
   // Calculate happiness score for each product
@@ -85,6 +96,7 @@ export function calculateProductHappiness(): ProductHappiness[] {
     
     results.push({
       product,
+      productId: productIdMap[product] || 0, // Default to 0 for unmapped products
       happinessScore: finalScore,
       totalFeedback: total,
       technicalIssues: technical,

@@ -1,19 +1,89 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { usePMDashboardStore } from '@/lib/pmStore';
-import { calculateProductHappiness } from '@/lib/feedbackUtils';
-import { TrendingDown, AlertTriangle, CheckCircle2, TrendingUp, Minus } from 'lucide-react';
-import Link from 'next/link';
+import { useEffect, useState } from "react";
+import { usePMDashboardStore } from "@/lib/pmStore";
+import { calculateProductHappiness } from "@/lib/feedbackUtils";
+import {
+  TrendingDown,
+  AlertTriangle,
+  CheckCircle2,
+  TrendingUp,
+  Minus,
+} from "lucide-react";
+import Link from "next/link";
+
+interface CHIProduct {
+  product_id: number;
+  product_name: string;
+  happiness_percentage: number;
+  avg_sentiment: number;
+  total_transcripts: number;
+}
 
 export default function PMDashboardPage() {
   const { theme } = usePMDashboardStore();
+  const [chiData, setCHIData] = useState<Record<number, CHIProduct>>({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', theme === 'dark');
+    document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
 
+  // Fetch CHI happiness data on component mount
+  useEffect(() => {
+    const fetchCHIData = async () => {
+      try {
+        console.log("📊 Fetching CHI happiness data from backend...");
+        const response = await fetch("http://localhost:8000/api/chi/happiness");
+        const data = await response.json();
+
+        if (data.success) {
+          console.log("✅ CHI Data loaded:", data.products);
+          setCHIData(data.products);
+        }
+      } catch (error) {
+        console.error("❌ Error fetching CHI data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCHIData();
+  }, []);
+
   const products = calculateProductHappiness();
+
+  // Merge CHI data with product data
+  const productsWithCHI = products.map((product) => {
+    const chiProduct = chiData[product.productId];
+    return {
+      ...product,
+      // Override happiness score with CHI data if available
+      happinessScore:
+        chiProduct?.happiness_percentage ?? product.happinessScore,
+      chiLoaded: !!chiProduct,
+    };
+  });
+
+  // Handle product click - fetch CHI data from backend
+  const handleProductClick = async (productId: number, productName: string) => {
+    if (productId > 0 && productId <= 3) {
+      console.log(
+        `🔍 Fetching CHI data for Product ID: ${productId} (${productName})`
+      );
+
+      try {
+        const response = await fetch(
+          `http://localhost:8000/api/chi/product/${productId}`
+        );
+        const data = await response.json();
+
+        console.log("📊 CHI Response:", data);
+      } catch (error) {
+        console.error("❌ Error fetching CHI data:", error);
+      }
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -25,24 +95,37 @@ export default function PMDashboardPage() {
               Customer Happiness Index (CHI)
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Real-time product satisfaction scores based on customer feedback
+              {loading
+                ? "Loading real-time product satisfaction scores..."
+                : "Real-time product satisfaction scores based on customer feedback"}
             </p>
           </div>
           <TrendingDown className="w-8 h-8 text-pink-600" />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {products.map((product) => (
+          {productsWithCHI.map((product) => (
             <Link
               key={product.product}
               href={`/dashboard/product/${encodeURIComponent(product.product)}`}
               className="block"
+              onClick={(e) => {
+                // Fetch CHI data on click (but still navigate)
+                handleProductClick(product.productId, product.product);
+              }}
             >
               <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6 border-2 border-transparent hover:border-pink-500 transition-all cursor-pointer group">
                 <div className="flex items-start justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-pink-600 dark:group-hover:text-pink-400">
-                    {product.product}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white group-hover:text-pink-600 dark:group-hover:text-pink-400">
+                      {product.product}
+                    </h3>
+                    {product.chiLoaded && (
+                      <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded-full">
+                        CHI
+                      </span>
+                    )}
+                  </div>
                   {product.happinessScore >= 70 ? (
                     <CheckCircle2 className="w-5 h-5 text-green-500" />
                   ) : product.happinessScore >= 40 ? (
@@ -62,21 +145,21 @@ export default function PMDashboardPage() {
                       happiness
                     </span>
                   </div>
-                  
+
                   {/* Progress Bar */}
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2">
                     <div
                       className={`h-2 rounded-full transition-all ${
                         product.happinessScore >= 70
-                          ? 'bg-green-500'
+                          ? "bg-green-500"
                           : product.happinessScore >= 40
-                          ? 'bg-yellow-500'
-                          : 'bg-red-500'
+                          ? "bg-yellow-500"
+                          : "bg-red-500"
                       }`}
                       style={{ width: `${product.happinessScore}%` }}
                     />
                   </div>
-                  
+
                   {/* Daily Change Indicator */}
                   <div className="flex items-center gap-1 text-xs">
                     {product.dailyChange > 0 ? (
@@ -90,7 +173,8 @@ export default function PMDashboardPage() {
                       <>
                         <TrendingDown className="w-3 h-3 text-red-600" />
                         <span className="text-red-600 dark:text-red-400 font-medium">
-                          Declined by {Math.abs(product.dailyChange)}% since yesterday
+                          Declined by {Math.abs(product.dailyChange)}% since
+                          yesterday
                         </span>
                       </>
                     ) : (
