@@ -16,18 +16,12 @@ import pandas as pd
 from google import genai
 import sys
 from supabase import create_client, Client
-
+from CHI.test_method import enhance_transcript_dataframe
 # Add CHI folder to Python path
 CHI_PATH = Path(__file__).parent / "CHI"
 sys.path.insert(0, str(CHI_PATH))
 
 # Import CHI calculation function
-try:
-    from test_method import enhance_transcript_dataframe
-    print("✅ CHI module loaded successfully")
-except ImportError as e:
-    print(f"⚠️  Warning: Could not import CHI module: {e}")
-    enhance_transcript_dataframe = None
 
 # Load environment variables from ElevenLabs directory
 env_path = Path(__file__).parent / "ElevenLabs" / ".env"
