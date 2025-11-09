@@ -4,6 +4,7 @@ import { useUser } from '@auth0/nextjs-auth0/client'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Sparkles, Brain, Zap, TrendingUp, Shield, Users, Phone, MessageSquare, BarChart3, Radio } from 'lucide-react'
+import Image from 'next/image'
 
 export default function Home() {
   const { user, isLoading } = useUser()
@@ -57,8 +58,14 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-pink-600 to-purple-600 rounded-xl blur-md opacity-75 animate-pulse"></div>
-              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-pink-600 to-purple-600 flex items-center justify-center">
-                <Radio className="w-6 h-6 text-white animate-pulse" />
+              <div className="relative w-10 h-10 rounded-xl overflow-hidden">
+                <Image 
+                  src="/aura-logo.png" 
+                  alt="A.U.R.A." 
+                  width={40} 
+                  height={40} 
+                  className="object-cover"
+                />
               </div>
             </div>
             <div>
