@@ -2,7 +2,8 @@ import pandas as pd
 import numpy as np
 import datetime
 import requests
-import google.generativeai as genai
+# import google.generativeai as genai
+from google import genai
 import os
 import time
 import json # We need this to parse the batch response
@@ -50,7 +51,7 @@ def load_feedback_from_supabase() -> pd.DataFrame:
 
 # --- NEW: Gemini Batch Processing Function ---
 
-def _get_batch_tonality_scores(transcripts: list, model) -> dict:
+def _get_batch_tonality_scores(transcripts: list, client, api_key: str) -> dict:
     """
     Analyzes a BATCH of transcripts in a single API call.
     Returns a dictionary mapping each transcript to its score.
@@ -72,7 +73,10 @@ def _get_batch_tonality_scores(transcripts: list, model) -> dict:
 
     scores_map = {}
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model='gemini-2.0-flash-exp',
+            contents=prompt
+        )
         
         # Clean the response text (it sometimes includes "```json" markers)
         cleaned_text = response.text.strip().replace("```json", "").replace("```", "")
@@ -145,8 +149,8 @@ def enhance_transcript_dataframe(use_supabase: bool = True, csv_file_path: str =
     
     # 1. --- Configure Gemini API ---
     try:
-        genai.configure(api_key=os.environ["GOOGLE_API_KEY"])
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        api_key = os.environ["GOOGLE_API_KEY"]
+        client = genai.Client(api_key=api_key)
     except KeyError:
         print("Error: GOOGLE_API_KEY not found in environment.")
         return None, None
@@ -154,9 +158,10 @@ def enhance_transcript_dataframe(use_supabase: bool = True, csv_file_path: str =
         print(f"Error configuring Gemini: {e}")
         return None, None
         
-    if "WEATHER_API_KEY" not in os.environ:
-        print("Error: WEATHER_API_KEY not found in environment.")
-        return None, None
+    # WEATHER API TEMPORARILY DISABLED
+    # if "WEATHER_API_KEY" not in os.environ:
+    #     print("Error: WEATHER_API_KEY not found in environment.")
+    #     return None, None
 
     # 2. --- Load Data (Supabase or CSV) ---
     if use_supabase:
@@ -183,12 +188,17 @@ def enhance_transcript_dataframe(use_supabase: bool = True, csv_file_path: str =
     gemini_cache = {} # This will be our master lookup
 
     # 3. --- Add 'national_crisis' Column (Weather API) ---
-    print("--- Checking for national crisis events (Weather API) ---")
-    df['national_crisis'] = df.apply(
-        _get_weather_disaster_status, axis=1, cache=weather_cache
-    )
+    # WEATHER API TEMPORARILY DISABLED - Setting all to False
+    print("--- Skipping Weather API (temporarily disabled) ---")
+    df['national_crisis'] = False
+    # df['national_crisis'] = df.apply(
+    #     _get_weather_disaster_status, axis=1, cache=weather_cache
+    # )
     
     # 4. --- Add 'network_outage' Column (Simulation) ---
+    # Set seed based on data for consistent results across runs
+    np.random.seed(42)  # Fixed seed ensures same "random" results every time
+    
     df['network_outage'] = False
     # (Your existing simulation logic is unchanged)
     hotspot_indices = df[df['product_name'] == 'Mobile Hotspot'].index
@@ -202,6 +212,9 @@ def enhance_transcript_dataframe(use_supabase: bool = True, csv_file_path: str =
     other_indices = df[df['product_name'] != 'Mobile Hotspot'].index
     outage_mask_others = np.random.choice([True, False], size=len(other_indices), p=[0.05, 0.95])
     df.loc[other_indices, 'network_outage'] = outage_mask_others
+    
+    # Reset seed to avoid affecting other random operations
+    np.random.seed(None)
 
     # 5. --- NEW: Batch-process tonality scores (Gemini API) ---
     print("--- Analyzing transcript tonality (Gemini API in batches) ---")
@@ -221,7 +234,7 @@ def enhance_transcript_dataframe(use_supabase: bool = True, csv_file_path: str =
     for i, batch in enumerate(batches):
         print(f"  Processing batch {i+1}/{len(batches)}...")
         # Call the new batch function
-        scores_map = _get_batch_tonality_scores(batch, model)
+        scores_map = _get_batch_tonality_scores(batch, client, api_key)
         
         # Update our master cache
         gemini_cache.update(scores_map)

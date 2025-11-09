@@ -13,22 +13,17 @@ from dotenv import load_dotenv
 from typing import Optional, List, Dict
 from pathlib import Path
 import pandas as pd
-import google.generativeai as genai
+from google import genai
+# import google.generativeai as genai
 import sys
 from supabase import create_client, Client
 
+from CHI.test_method import enhance_transcript_dataframe
 # Add CHI folder to Python path
 CHI_PATH = Path(__file__).parent / "CHI"
 sys.path.insert(0, str(CHI_PATH))
 
 # Import CHI calculation function
-try:
-    from test_method import enhance_transcript_dataframe
-    print("✅ CHI module loaded successfully")
-except ImportError as e:
-    print(f"⚠️  Warning: Could not import CHI module: {e}")
-    enhance_transcript_dataframe = None
-
 # Load environment variables from ElevenLabs directory
 env_path = Path(__file__).parent / "ElevenLabs" / ".env"
 load_dotenv(dotenv_path=env_path)
@@ -106,9 +101,9 @@ if not ELEVENLABS_API_KEY or not ELEVENLABS_AGENT_ID:
     print("⚠️  Warning: ElevenLabs credentials not found in .env file")
 
 if GOOGLE_API_KEY:
-    # Configure Gemini API
-    genai.configure(api_key=GOOGLE_API_KEY)
-    print("✅ Gemini API configured")
+    # Configure Gemini API (new SDK doesn't need explicit configuration)
+    # The API key is passed directly when creating the client
+    print("✅ Gemini API key loaded")
 else:
     print("⚠️  Warning: Google API key not found in .env file")
 
@@ -573,9 +568,10 @@ async def test_gemini():
         raise HTTPException(status_code=500, detail="Gemini not configured")
     
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content(
-            "Say hello in JSON format with a 'message' field"
+        client = genai.Client(api_key=GOOGLE_API_KEY)
+        response = client.models.generate_content(
+            model='gemini-2.0-flash-exp',
+            contents="Say hello in JSON format with a 'message' field"
         )
         return {"success": True, "response": response.text}
     except Exception as e:
@@ -645,8 +641,11 @@ Make both emails professional, concise, and actionable. The tech ticket should b
         print(f"\n📧 Generating emails for {request.product_name}...")
         
         # Call Gemini API
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content(prompt)
+        client = genai.Client(api_key=GOOGLE_API_KEY)
+        response = client.models.generate_content(
+            model='gemini-2.0-flash-exp',
+            contents=prompt
+        )
         
         # Parse response
         response_text = response.text.strip()
@@ -789,8 +788,11 @@ Make the bullet points specific to the actual issues/feedback found in the trans
         print(f"\n🤖 Asking Gemini for recommendation on {product_name}...")
         
         # Call Gemini API
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content(prompt)
+        client = genai.Client(api_key=GOOGLE_API_KEY)
+        response = client.models.generate_content(
+            model='gemini-2.0-flash-exp',
+            contents=prompt
+        )
         
         # Parse the response
         response_text = response.text.strip()
